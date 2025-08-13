@@ -3,6 +3,7 @@
  */
 
 #include "Minimap.h"
+#include "Ground.h"
 #include "../Engine/Core/Scene.h"
 #include "../Engine/Rendering/Renderer.h"
 #include "../Engine/Rendering/Mesh.h"
@@ -19,6 +20,13 @@ Minimap::Minimap(const std::string& name, float size)
       minimapWidth(256), 
       minimapHeight(256), 
       minimapSize(size),
+      // Default orthographic scope (captures 30x30 world units)
+      orthoLeft(-15.0f),
+      orthoRight(15.0f),
+      orthoBottom(-15.0f),
+      orthoTop(15.0f),
+      orthoNear(0.1f),
+      orthoFar(100.0f),
       framebuffer(0),
       textureColorBuffer(0),
       renderbuffer(0),
@@ -56,7 +64,7 @@ bool Minimap::initialize() {
     }
     
     // Setup orthographic camera
-    orthographicCamera.setPosition(Vec3(0.0f, 20.0f, 0.0f)); // High up for bird's-eye view
+    orthographicCamera.setPosition(Vec3(0.0f, 5.0f, 0.0f)); // Closer to ground for larger cubes
     orthographicCamera.setRotation(Vec3(-90.0f, 0.0f, 0.0f)); // Looking straight down
     
     // Create a simple quad mesh for rendering the minimap texture
@@ -172,15 +180,14 @@ void Minimap::setupMesh() {
               << ", top=" << top << ", bottom=" << bottom << std::endl;
 }
 
-bool Minimap::aggregateSceneMeshes() {
+bool Minimap::updateSceneObjects() {
     if (!scene) {
-        std::cerr << "No scene reference for minimap mesh aggregation" << std::endl;
+        std::cerr << "No scene reference for minimap object update" << std::endl;
         return false;
     }
     
-    std::vector<float> allVertices;
-    std::vector<unsigned int> allIndices;
-    unsigned int vertexOffset = 0;
+    // Clear previous frame's objects
+    sceneObjects.clear();
     
     // Get all game objects from the scene
     const auto& gameObjects = scene->getGameObjects();
@@ -188,9 +195,9 @@ bool Minimap::aggregateSceneMeshes() {
     static int frameCount = 0;
     frameCount++;
     
-    // Only print every 60 frames to avoid spam (once per second at 60fps)
-    if (frameCount % 60 == 0) {
-        std::cout << "Frame " << frameCount << ": Aggregating meshes from " << gameObjects.size() << " scene objects for minimap..." << std::endl;
+    // Only print every 100 frames to avoid spam
+    if (frameCount % 100 == 0) {
+        std::cout << "Frame " << frameCount << ": Updating " << gameObjects.size() << " scene objects for GPU-based minimap rendering..." << std::endl;
     }
     
     for (const auto& gameObject : gameObjects) {
@@ -199,123 +206,65 @@ bool Minimap::aggregateSceneMeshes() {
             continue;
         }
         
-        // Get the mesh from the game object
-        const Mesh* objectMesh = gameObject->getMesh();
-        if (!objectMesh || !objectMesh->isValid()) {
-            std::cout << "Skipping " << gameObject->getName() << " - no valid mesh" << std::endl;
+        // Special handling for Ground objects that use chunks
+        if (gameObject->getName() == "Ground") {
+            // Handle Ground objects with chunks
+            const Ground* ground = dynamic_cast<const Ground*>(gameObject.get());
+            if (ground) {
+                const auto& chunks = ground->getChunks();
+                for (const auto& chunk : chunks) {
+                    if (chunk && chunk->getActive()) {
+                        const Mesh* chunkMesh = chunk->getMesh();
+                        if (chunkMesh && chunkMesh->isValid()) {
+                            // Add chunk to scene objects for rendering
+                            sceneObjects.push_back(chunk.get());
+                            
+                            if (frameCount % 100 == 0) {
+                                Vec3 position = chunk->getPosition();
+                                std::cout << "  - " << chunk->getName() << " (chunk): pos(" << position.x << "," << position.y << "," << position.z << ")" << std::endl;
+                            }
+                        }
+                    }
+                }
+            }
             continue;
         }
         
-        std::cout << "Adding " << gameObject->getName() << " to minimap mesh" << std::endl;
+        // Get the mesh from the game object
+        const Mesh* objectMesh = gameObject->getMesh();
+        if (!objectMesh || !objectMesh->isValid()) {
+            if (frameCount % 100 == 0) {
+                std::cout << "Skipping " << gameObject->getName() << " - no valid mesh" << std::endl;
+            }
+            continue;
+        }
         
-        // Get the object's transform
-        Vec3 position = gameObject->getPosition();
-        Vec3 scale = gameObject->getScale();
-        Vec3 rotation = gameObject->getRotation();
+        // Add to scene objects for GPU rendering
+        sceneObjects.push_back(gameObject.get());
         
-        // Extract actual mesh data from the object
-        const std::vector<float>& objectVertices = objectMesh->getVertices();
-        const std::vector<unsigned int>& objectIndices = objectMesh->getIndices();
-        
-        // Only print every 60 frames to avoid spam
+        // Only print every 100 frames to avoid spam
         if (frameCount % 100 == 0) {
+            Vec3 position = gameObject->getPosition();
+            Vec3 rotation = gameObject->getRotation();
+            Vec3 scale = gameObject->getScale();
             std::cout << "  - " << gameObject->getName() << ": pos(" << position.x << "," << position.y << "," << position.z 
                       << ") rot(" << rotation.x << "," << rotation.y << "," << rotation.z 
                       << ") scale(" << scale.x << "," << scale.y << "," << scale.z << ")" << std::endl;
-            std::cout << "  - Original mesh: " << objectVertices.size() / 3 
-                      << " vertices, " << objectIndices.size() << " indices" << std::endl;
         }
-        
-        // ============================================================================
-        // CPU-BASED MESH AGGREGATION: Combining all scene objects into one minimap mesh
-        // ============================================================================
-        // 
-        // BEFORE UPDATE (Rotation Missing):
-        // - Only applied position and scale to vertices
-        // - Rotation was completely ignored
-        // - Result: Static cubes that never rotated in minimap
-        // 
-        // AFTER UPDATE (Rotation Added):
-        // - Now applies position + scale + ROTATION to vertices
-        // - Full 3D rotation matrix calculation on CPU
-        // - Result: Rotating cubes visible in minimap
-        // 
-        // PERFORMANCE NOTE: This CPU approach is inefficient because:
-        // - Heavy math calculations for every vertex every frame
-        // - No parallelization (CPU is sequential)
-        // - Future optimization: Move this to GPU via shader uniforms
-        // ============================================================================
-        
-        // Apply transform to actual mesh vertices
-        for (size_t i = 0; i < objectVertices.size(); i += 3) {
-            Vec3 vertex(objectVertices[i], objectVertices[i+1], objectVertices[i+2]);
-            
-            // Apply scale
-            vertex.x *= scale.x;
-            vertex.y *= scale.y;
-            vertex.z *= scale.z;
-            
-            // Apply rotation (convert degrees to radians and apply rotation matrix)
-            float rotX = rotation.x * 3.14159f / 180.0f;
-            float rotY = rotation.y * 3.14159f / 180.0f;
-            float rotZ = rotation.z * 3.14159f / 180.0f;
-            
-            // Apply Y-axis rotation (most common for cubes)
-            float tempX = vertex.x;
-            float tempZ = vertex.z;
-            vertex.x = tempX * cos(rotY) - tempZ * sin(rotY);
-            vertex.z = tempX * sin(rotY) + tempZ * cos(rotY);
-            
-            // Apply X-axis rotation
-            tempX = vertex.x;
-            float tempY = vertex.y;
-            vertex.x = tempX * cos(rotX) + tempY * sin(rotX);
-            vertex.y = -tempX * sin(rotX) + tempY * cos(rotX);
-            
-            // Apply Z-axis rotation
-            tempX = vertex.x;
-            tempY = vertex.y;
-            vertex.x = tempX * cos(rotZ) - tempY * sin(rotZ);
-            vertex.y = tempX * sin(rotZ) + tempY * cos(rotZ);
-            
-            // Apply position
-            vertex = vertex + position;
-            
-            // Add to all vertices
-            allVertices.push_back(vertex.x);
-            allVertices.push_back(vertex.y);
-            allVertices.push_back(vertex.z);
-        }
-        
-        // Add indices with offset
-        for (unsigned int index : objectIndices) {
-            allIndices.push_back(index + vertexOffset);
-        }
-        
-        vertexOffset += objectVertices.size() / 3; // 3 floats per vertex
     }
     
-    // Create the aggregated mesh
-    aggregatedMesh = std::make_unique<Mesh>();
-    if (!aggregatedMesh->createMesh(allVertices, allIndices)) {
-        std::cerr << "Failed to create aggregated mesh for minimap" << std::endl;
-        return false;
-    }
-    
-    // Only print every 60 frames to avoid spam
-    if (frameCount % 60 == 0) {
-        std::cout << "Minimap mesh aggregation complete: " << allVertices.size() / 3 
-                  << " vertices, " << allIndices.size() << " indices" << std::endl;
+    if (frameCount % 100 == 0) {
+        std::cout << "GPU-based minimap objects prepared: " << sceneObjects.size() << " objects" << std::endl;
     }
     
     return true;
 }
 
 void Minimap::renderSceneToTexture() {
-    // Always update mesh aggregation to capture dynamic changes (rotation, position, etc.)
-    aggregateSceneMeshes();
+    // Always update scene objects to capture dynamic changes (rotation, position, etc.)
+    updateSceneObjects();
     
-    if (!aggregatedMesh || !isFramebufferInitialized) return;
+    if (sceneObjects.empty() || !isFramebufferInitialized) return;
     
     // Store current OpenGL state
     GLint currentFramebuffer;
@@ -335,17 +284,33 @@ void Minimap::renderSceneToTexture() {
     if (orthographicShader) {
         orthographicShader->use();
         
-        // Set orthographic projection matrix
-        Mat4 orthoMatrix = Engine::orthographic(-15.0f, 15.0f, -15.0f, 15.0f, 0.1f, 100.0f);
+        // Set orthographic projection matrix using configurable scope
+        Mat4 orthoMatrix = Engine::orthographic(orthoLeft, orthoRight, orthoBottom, orthoTop, orthoNear, orthoFar);
         orthographicShader->setMat4("projection", orthoMatrix);
         orthographicShader->setMat4("view", orthographicCamera.getViewMatrix());
         
-        // Render aggregated mesh
-        if (aggregatedMesh) {
-            Mat4 modelMatrix = Mat4(); // Identity matrix
-            orthographicShader->setMat4("model", modelMatrix);
-            // Color is handled automatically by the fragment shader based on Y position
-            aggregatedMesh->render();
+        // ============================================================================
+        // GPU-BASED RENDERING: Render each object individually with its own transform
+        // ============================================================================
+        // 
+        // PERFORMANCE BENEFITS:
+        // - No CPU vertex transformation calculations
+        // - GPU handles all matrix multiplications in parallel
+        // - Each object's transformation is applied via shader uniforms
+        // - Much more efficient than CPU-based mesh aggregation
+        // ============================================================================
+        
+        // Render each scene object individually
+        for (const GameObject* gameObject : sceneObjects) {
+            const Mesh* objectMesh = gameObject->getMesh();
+            if (objectMesh && objectMesh->isValid()) {
+                // Set the object's complete transformation matrix (includes rotation, position, scale)
+                Mat4 modelMatrix = gameObject->getModelMatrix();
+                orthographicShader->setMat4("model", modelMatrix);
+                
+                // Render the object's mesh
+                objectMesh->render();
+            }
         }
     }
     
@@ -354,6 +319,44 @@ void Minimap::renderSceneToTexture() {
     glViewport(currentViewport[0], currentViewport[1], currentViewport[2], currentViewport[3]);
     
     isTextureValid = true;
+}
+
+// ============================================================================
+// MINIMAP CONFIGURATION METHODS
+// ============================================================================
+
+void Minimap::setMinimapDimensions(int width, int height) {
+    minimapWidth = width;
+    minimapHeight = height;
+    
+    // Recreate framebuffer with new dimensions if already initialized
+    if (isFramebufferInitialized) {
+        cleanupFramebuffer();
+        initializeFramebuffer();
+    }
+    
+    std::cout << "Minimap dimensions set to: " << width << "x" << height << std::endl;
+}
+
+void Minimap::setOrthographicScope(float left, float right, float bottom, float top, float near, float far) {
+    orthoLeft = left;
+    orthoRight = right;
+    orthoBottom = bottom;
+    orthoTop = top;
+    orthoNear = near;
+    orthoFar = far;
+    
+    std::cout << "Orthographic scope set to: L=" << left << " R=" << right 
+              << " B=" << bottom << " T=" << top << " N=" << near << " F=" << far << std::endl;
+}
+
+void Minimap::getOrthographicScope(float& left, float& right, float& bottom, float& top, float& near, float& far) const {
+    left = orthoLeft;
+    right = orthoRight;
+    bottom = orthoBottom;
+    top = orthoTop;
+    near = orthoNear;
+    far = orthoFar;
 }
 
 void Minimap::renderMinimapTexture() {

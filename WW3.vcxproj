@@ -140,6 +140,7 @@
     <ClCompile Include="Source\GameObjects\Cube.cpp" />
     <ClCompile Include="Source\Engine\Core\Game.cpp" />
     <ClCompile Include="Source\Engine\Core\GameObject.cpp" />
+    <ClCompile Include="Source\GameObjects\Chunk.cpp" />
     <ClCompile Include="Source\GameObjects\Ground.cpp" />
     <ClCompile Include="Source\Engine\Input\Input.cpp" />
     <ClCompile Include="Source\GameObjects\Minimap.cpp" />
@@ -152,6 +153,8 @@
     <ClCompile Include="Source\Engine\Rendering\Shader.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include=".gitignore" />
+    <None Include="README.md" />
     <None Include="Resources\Shaders\vertex.glsl" />
     <None Include="Resources\Shaders\fragment.glsl" />
     <None Include="Resources\Shaders\crosshair_vertex.glsl" />
@@ -167,6 +170,7 @@
     <ClInclude Include="Source\GameObjects\Cube.h" />
     <ClInclude Include="Source\Engine\Core\Game.h" />
     <ClInclude Include="Source\Engine\Core\GameObject.h" />
+    <ClInclude Include="Source\GameObjects\Chunk.h" />
     <ClInclude Include="Source\GameObjects\Ground.h" />
     <ClInclude Include="Source\Engine\Input\Input.h" />
     <ClInclude Include="Source\GameObjects\Minimap.h" />

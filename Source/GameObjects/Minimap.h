@@ -39,6 +39,14 @@ private:
     int minimapHeight;
     float minimapSize;  // Size on screen (0.0 to 1.0)
     
+    // Orthographic projection scope (world space units)
+    float orthoLeft;    // Left boundary of captured area
+    float orthoRight;   // Right boundary of captured area
+    float orthoBottom;  // Bottom boundary of captured area
+    float orthoTop;     // Top boundary of captured area
+    float orthoNear;    // Near clipping plane
+    float orthoFar;     // Far clipping plane
+    
     // Rendering
     unsigned int framebuffer;
     unsigned int textureColorBuffer;
@@ -51,8 +59,8 @@ private:
     // Camera for orthographic view
     Camera orthographicCamera;
     
-    // Aggregated mesh from scene objects
-    std::unique_ptr<Mesh> aggregatedMesh;
+    // GPU-based rendering: Store scene objects for individual rendering
+    std::vector<const GameObject*> sceneObjects;
     
     // Scene reference for gathering objects
     Scene* scene;
@@ -76,6 +84,16 @@ public:
     void setScene(Scene* sceneRef) { scene = sceneRef; }
     void setMinimapSize(float size) { minimapSize = size; }
     
+    // Minimap dimension configuration
+    void setMinimapDimensions(int width, int height);
+    void setOrthographicScope(float left, float right, float bottom, float top, float near = 0.1f, float far = 100.0f);
+    
+    // Getters for current settings
+    int getMinimapWidth() const { return minimapWidth; }
+    int getMinimapHeight() const { return minimapHeight; }
+    float getMinimapSize() const { return minimapSize; }
+    void getOrthographicScope(float& left, float& right, float& bottom, float& top, float& near, float& far) const;
+    
     // Orthographic camera control
     void updateOrthographicCamera(const Vec3& playerPosition);
     
@@ -83,7 +101,7 @@ private:
     // Helper methods
     bool initializeFramebuffer();
     bool initializeShaders();
-    bool aggregateSceneMeshes();
+    bool updateSceneObjects();  // GPU-based: Update list of objects to render
     void renderSceneToTexture();
     void renderMinimapTexture();
     void setupMesh(); // Override from GameObject

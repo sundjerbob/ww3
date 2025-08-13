@@ -270,6 +270,22 @@ void Game::setupSceneObjects() {
     minimap = std::make_unique<Minimap>("Minimap", 0.25f);
     minimap->setScene(scene.get());
     minimap->setRenderer(renderer.get());
+    
+    // Configure minimap dimensions and scope
+    minimap->setMinimapDimensions(512, 512);  // Higher resolution for better quality
+    minimap->setOrthographicScope(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 100.0f);  // Larger capture area
+    /*
+    
+    // Current: Shows 40x40 world units (-20 to +20)
+    minimap->setOrthographicScope(-20.0f, 20.0f, -20.0f, 20.0f, 0.1f, 100.0f);
+
+    // Smaller area: Shows 10x10 world units (-5 to +5)
+    minimap->setOrthographicScope(-5.0f, 5.0f, -5.0f, 5.0f, 0.1f, 100.0f);
+
+    // Even smaller: Shows 4x4 world units (-2 to +2)
+    minimap->setOrthographicScope(-2.0f, 2.0f, -2.0f, 2.0f, 0.1f, 100.0f);
+    */
+
     if (!minimap->initialize()) {
         std::cerr << "Failed to initialize minimap" << std::endl;
     }
