@@ -6,13 +6,14 @@
 #include "../Rendering/Mesh.h"
 #include "../Rendering/Renderer.h"
 #include <iostream>
+#include <algorithm>
 
 namespace Engine {
 
 GameObject::GameObject(const std::string& objectName)
     : position(0.0f, 0.0f, 0.0f), rotation(0.0f, 0.0f, 0.0f), scale(1.0f, 1.0f, 1.0f),
-      name(objectName), isActive(true), isInitialized(false), lastUpdateTime(0.0f),
-      objectRenderer(nullptr) {}
+      parent(nullptr), color(1.0f, 1.0f, 1.0f), name(objectName), isActive(true), isInitialized(false), isEntity(false), 
+      lastUpdateTime(0.0f), objectRenderer(nullptr) {}
 
 GameObject::~GameObject() {
     cleanup();
@@ -44,10 +45,23 @@ void GameObject::update(float deltaTime) {
 void GameObject::render(const Renderer& renderer, const Camera& camera) {
     if (!isActive || !isInitialized || !mesh) return;
 
-    const Renderer& selectedRenderer = (objectRenderer != nullptr) ? *objectRenderer : renderer;
+    // Get the appropriate renderer for this object type
+    Renderer* selectedRenderer = nullptr;
+    if (objectRenderer != nullptr) {
+        // Use explicitly assigned renderer (legacy support)
+        selectedRenderer = objectRenderer;
+    } else {
+        // Use the factory to get the preferred renderer for this object type
+        selectedRenderer = RendererFactory::getInstance().getRenderer(getPreferredRendererType());
+    }
+    
+    if (!selectedRenderer) {
+        std::cerr << "Warning: No renderer available for GameObject '" << name << "'" << std::endl;
+        return;
+    }
+
     const Mat4 modelMatrix = getModelMatrix();
-    const Vec3 defaultColor(1.0f, 1.0f, 1.0f);
-    selectedRenderer.renderMesh(*mesh, modelMatrix, camera, defaultColor);
+    selectedRenderer->renderMesh(*mesh, modelMatrix, camera, getColor());
 }
 
 void GameObject::cleanup() {
@@ -71,21 +85,21 @@ Mat4 GameObject::getModelMatrix() const {
     // Apply rotation (convert degrees to radians)
     if (rotation.x != 0.0f) {
         Mat4 rotX = Engine::rotateX(rotation.x * 3.14159f / 180.0f);
-        model = Engine::multiply(model, rotX);
+        model = model * rotX;
     }
     if (rotation.y != 0.0f) {
         Mat4 rotY = Engine::rotateY(rotation.y * 3.14159f / 180.0f);
-        model = Engine::multiply(model, rotY);
+        model = model * rotY;
     }
     if (rotation.z != 0.0f) {
         Mat4 rotZ = Engine::rotateZ(rotation.z * 3.14159f / 180.0f);
-        model = Engine::multiply(model, rotZ);
+        model = model * rotZ;
     }
     
     // Apply scale
     Vec3 scaleVector = scale;
     Mat4 scaleMatrix = Engine::scale(scaleVector);
-    model = Engine::multiply(model, scaleMatrix);
+    model = model * scaleMatrix;
     
     return model;
 }
@@ -97,6 +111,71 @@ void GameObject::updateTransform() {
 void GameObject::setupMesh() {
     // Base implementation - derived classes should override
     std::cout << "Warning: GameObject '" << name << "' using default mesh setup" << std::endl;
+}
+
+// Parent-child system implementation
+void GameObject::addChild(std::unique_ptr<GameObject> child) {
+    if (child) {
+        child->setParent(this);
+        child->setRenderer(objectRenderer); // Pass renderer to child
+        children.push_back(std::move(child));
+    }
+}
+
+void GameObject::removeChild(GameObject* child) {
+    if (!child) return;
+    
+    auto it = std::find_if(children.begin(), children.end(),
+                          [child](const std::unique_ptr<GameObject>& ptr) {
+                              return ptr.get() == child;
+                          });
+    
+    if (it != children.end()) {
+        (*it)->setParent(nullptr);
+        children.erase(it);
+    }
+}
+
+void GameObject::setParent(GameObject* newParent) {
+    parent = newParent;
+}
+
+// World transform calculations
+Vec3 GameObject::getWorldPosition() const {
+    if (parent) {
+        // Transform local position by parent's world transform
+        Mat4 parentWorldMatrix = parent->getWorldModelMatrix();
+        Vec4 worldPos = parentWorldMatrix * Vec4(position.x, position.y, position.z, 1.0f);
+        return Vec3(worldPos.x, worldPos.y, worldPos.z);
+    }
+    return position;
+}
+
+Vec3 GameObject::getWorldRotation() const {
+    if (parent) {
+        Vec3 parentRotation = parent->getWorldRotation();
+        return Vec3(parentRotation.x + rotation.x, 
+                   parentRotation.y + rotation.y, 
+                   parentRotation.z + rotation.z);
+    }
+    return rotation;
+}
+
+Vec3 GameObject::getWorldScale() const {
+    if (parent) {
+        Vec3 parentScale = parent->getWorldScale();
+        return Vec3(parentScale.x * scale.x, 
+                   parentScale.y * scale.y, 
+                   parentScale.z * scale.z);
+    }
+    return scale;
+}
+
+Mat4 GameObject::getWorldModelMatrix() const {
+    if (parent) {
+        return parent->getWorldModelMatrix() * getModelMatrix();
+    }
+    return getModelMatrix();
 }
 
 } // namespace Engine

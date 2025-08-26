@@ -63,12 +63,32 @@ struct Vec3 {
     Vec3 operator+(const Vec3& other) const;
     Vec3 operator-(const Vec3& other) const;
     Vec3 operator*(float scalar) const;
+    Vec3& operator+=(const Vec3& other);
+    Vec3& operator*=(float scalar);
     
     // Mathematical operations
     float length() const;
     Vec3 normalize() const;
     Vec3 cross(const Vec3& other) const;
     float dot(const Vec3& other) const;
+};
+
+/**
+ * 4D Vector Structure for Homogeneous Coordinates
+ * 
+ * Used for matrix-vector multiplication in homogeneous coordinate system.
+ * The w component is typically 1.0 for positions and 0.0 for directions.
+ */
+struct Vec4 {
+    float x, y, z, w;
+    
+    // Constructors
+    Vec4(float x = 0, float y = 0, float z = 0, float w = 1) : x(x), y(y), z(z), w(w) {}
+    
+    // Vector operations
+    Vec4 operator+(const Vec4& other) const;
+    Vec4 operator-(const Vec4& other) const;
+    Vec4 operator*(float scalar) const;
 };
 
 /**
@@ -123,6 +143,8 @@ Vec3 normalize(const Vec3& v);
 
 // Matrix operations
 Mat4 multiply(const Mat4& a, const Mat4& b);
+Mat4 operator*(const Mat4& a, const Mat4& b);            // Matrix-matrix multiplication
+Vec4 operator*(const Mat4& matrix, const Vec4& vector);  // Matrix-vector multiplication
 Mat3 transpose(const Mat3& matrix);
 Mat3 inverse(const Mat3& matrix);
 

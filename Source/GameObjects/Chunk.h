@@ -24,7 +24,6 @@ namespace Engine {
 class Chunk : public GameObject {
 private:
     // Chunk properties
-    Vec3 color;
     int chunkSize;  // Number of cubes per side (e.g., 16x16)
     float cubeSize; // Size of each individual cube
     Vec2 chunkPosition; // 2D position in chunk grid (x, z)
@@ -37,12 +36,14 @@ public:
     Chunk(const std::string& name, const Vec2& position, int size = 16, float cubeSize = 1.0f);
     virtual ~Chunk() = default;
     
-    // Chunk-specific methods
-    void setColor(const Vec3& chunkColor) { color = chunkColor; }
-    Vec3 getColor() const { return color; }
+    // Chunk-specific methods (color methods inherited from GameObject)
     
     Vec2 getChunkPosition() const { return chunkPosition; }
     int getChunkSize() const { return chunkSize; }
+    
+    // Chunk repositioning methods
+    void setChunkPosition(const Vec2& newPosition) { chunkPosition = newPosition; }
+    void regenerateHeightMap();
     
     // Check if chunk is within render distance
     bool isInRenderDistance(const Vec3& playerPosition, float renderDistance) const;

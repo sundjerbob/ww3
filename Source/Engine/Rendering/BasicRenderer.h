@@ -38,11 +38,21 @@ public:
                     const Mat4& modelMatrix,
                     const Camera& camera,
                     const Vec3& color) const override;
+    
+    // Additional rendering method with coloring mode control
+    void renderMesh(const Mesh& mesh,
+                    const Mat4& modelMatrix,
+                    const Camera& camera,
+                    const Vec3& color,
+                    bool useHeightColoring) const;
 
     void renderCrosshair(const Camera& camera) const override;
 
     float getAspectRatio() const override;
     const Mat4& getProjectionMatrix() const override;
+    
+    // Get shader for custom rendering
+    Shader* getShader() const { return objectShader.get(); }
 
 private:
     bool initializeOpenGL();

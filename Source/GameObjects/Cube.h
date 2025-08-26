@@ -24,7 +24,6 @@ namespace Engine {
 class Cube : public GameObject {
 private:
     // Cube properties
-    Vec3 color;
     bool isRotating;
     float rotationSpeed;
     
@@ -33,9 +32,8 @@ public:
     Cube(const std::string& name = "Cube", const Vec3& cubeColor = Vec3(1.0f, 1.0f, 1.0f));
     virtual ~Cube() = default;
     
-    // Cube-specific methods
-    void setColor(const Vec3& cubeColor) { color = cubeColor; }
-    Vec3 getColor() const { return color; }
+    // Cube-specific methods (now inherited from GameObject)
+    // setColor() and getColor() are inherited from GameObject
     
     void setRotating(bool rotating) { isRotating = rotating; }
     bool getRotating() const { return isRotating; }

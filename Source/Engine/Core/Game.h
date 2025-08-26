@@ -23,11 +23,16 @@
 #include "../Math/Camera.h"
 #include "../Input/Input.h"
 #include "Scene.h"
+#include "Projectile.h"
 
 namespace Engine {
 
 // Forward declarations
 class Minimap;
+class Weapon;
+class Crosshair;
+class AmmoUI;
+class MonsterSpawner;
 
 /**
  * Game Class - Engine Root and Main Coordinator
@@ -50,11 +55,14 @@ private:
     int windowed_width, windowed_height; // Store windowed mode dimensions
     
     // Engine systems
-    std::unique_ptr<Renderer> renderer; // Renderer for the main game world
-    std::unique_ptr<Renderer> overlayRenderer; // for UI elements like crosshair
     std::unique_ptr<Camera> camera; // Camera for the main game world
     std::unique_ptr<Scene> scene; // Scene for the main game world
     std::unique_ptr<Minimap> minimap; // Minimap for bird's-eye view
+    std::unique_ptr<Weapon> weapon; // Weapon for FPS-style weapon rendering
+    Crosshair* crosshair; // Crosshair for FPS-style aiming (owned by scene)
+    std::unique_ptr<AmmoUI> ammoUI; // Ammunition UI display
+    std::unique_ptr<ProjectileManager> projectileManager; // Projectile system for shooting
+    std::unique_ptr<MonsterSpawner> monsterSpawner; // Monster spawning system
     
     // Game state
     bool isRunning; // Whether the game is running

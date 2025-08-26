@@ -38,6 +38,9 @@ private:
     std::vector<std::unique_ptr<GameObject>> gameObjects;
     std::unordered_map<std::string, GameObject*> objectMap; // For quick lookup by name
     
+    // Ground reference for entity visibility checking
+    class Ground* groundReference;
+    
     // Scene state
     std::string sceneName;
     bool isInitialized;
@@ -65,6 +68,12 @@ public:
     void removeGameObject(const std::string& name);
     void removeGameObject(GameObject* object);
     const std::vector<std::unique_ptr<GameObject>>& getGameObjects() const { return gameObjects; }
+    std::vector<GameObject*> getAllGameObjects() const;
+    
+    // Entity system
+    void setGroundReference(class Ground* ground) { groundReference = ground; }
+    bool shouldRenderEntity(const GameObject* entity) const;
+    void updateGroundEntityVisibility(); // Update Ground's visibility system
     
     // Scene control
     void setActive(bool active) { isActive = active; }

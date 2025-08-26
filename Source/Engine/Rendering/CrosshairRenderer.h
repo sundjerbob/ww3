@@ -40,6 +40,9 @@ public:
 
     float getAspectRatio() const override;
     const Mat4& getProjectionMatrix() const override;
+    
+    // Get shader for custom rendering
+    Shader* getShader() const override { return crosshairShader.get(); }
 
 private:
     bool loadCrosshairShader();

@@ -44,16 +44,25 @@ void CrosshairRenderer::renderMesh(const Mesh& mesh,
                                    const Mat4& modelMatrix,
                                    const Camera& camera,
                                    const Vec3& color) const {
-    (void)color; // current fragment shader ignores color uniform
     if (!isInitialized || !crosshairShader) return;
+    
+    // Enable blending for transparency
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDisable(GL_DEPTH_TEST);
+    
     crosshairShader->use();
     Mat4 identity; // default constructor yields identity
     crosshairShader->setMat4("model", modelMatrix);
     crosshairShader->setMat4("view", identity);
     crosshairShader->setMat4("projection", identity);
+    crosshairShader->setVec3("color", color);
+    crosshairShader->setFloat("alpha", 0.7f); // Semi-transparent for UI elements
+    
     mesh.render();
+    
     glEnable(GL_DEPTH_TEST);
+    glDisable(GL_BLEND);
 }
 
 void CrosshairRenderer::renderCrosshair(const Camera& camera) const {}

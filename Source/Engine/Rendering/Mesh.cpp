@@ -7,6 +7,7 @@
 
 #include "Mesh.h"
 #include <utility> // For std::move
+#include <iostream>
 
 namespace Engine {
 
@@ -80,6 +81,9 @@ bool Mesh::createMesh(const std::vector<float>& vertexData, const std::vector<un
 }
 
 bool Mesh::createMeshWithNormals(const std::vector<float>& vertexData, const std::vector<unsigned int>& indexData) {
+    std::cout << "Mesh: Creating mesh with normals - Vertices: " << vertexData.size() 
+              << ", Indices: " << indexData.size() << std::endl;
+    
     // Clean up any existing mesh
     cleanup();
     
@@ -91,6 +95,8 @@ bool Mesh::createMeshWithNormals(const std::vector<float>& vertexData, const std
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
     glGenBuffers(1, &EBO);
+    
+    std::cout << "Mesh: Generated OpenGL objects - VAO: " << VAO << ", VBO: " << VBO << ", EBO: " << EBO << std::endl;
     
     glBindVertexArray(VAO);
     
@@ -115,6 +121,7 @@ bool Mesh::createMeshWithNormals(const std::vector<float>& vertexData, const std
     glBindVertexArray(0);
     
     isInitialized = true;
+    std::cout << "Mesh: Mesh created successfully with normals" << std::endl;
     return true;
 }
 
@@ -157,6 +164,49 @@ bool Mesh::createMeshWithTexCoords(const std::vector<float>& vertexData, const s
     return true;
 }
 
+bool Mesh::createMeshWithNormalsAndTexCoords(const std::vector<float>& vertexData, const std::vector<unsigned int>& indexData) {
+    // Clean up any existing mesh
+    cleanup();
+    
+    // Store data
+    vertices = vertexData;
+    indices = indexData;
+    
+    // Generate OpenGL objects
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+    
+    glBindVertexArray(VAO);
+    
+    // Upload vertex data
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
+    
+    // Upload index data
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
+    
+    // Configure vertex attributes for position + normal + texture coordinates (8 floats per vertex)
+    // Position attribute (location = 0)
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    
+    // Normal attribute (location = 1)
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    
+    // Texture coordinate attribute (location = 2)
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+    glEnableVertexAttribArray(2);
+    
+    // Unbind
+    glBindVertexArray(0);
+    
+    isInitialized = true;
+    return true;
+}
+
 void Mesh::cleanup() {
     if (isInitialized) {
         glDeleteVertexArrays(1, &VAO);
@@ -173,6 +223,34 @@ void Mesh::render() const {
     if (isInitialized) {
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+    }
+}
+
+void Mesh::renderTriangles(const std::vector<unsigned int>& triangleIndices) const {
+    if (isInitialized && !triangleIndices.empty()) {
+        glBindVertexArray(VAO);
+        // Use glDrawRangeElements for better performance with subset rendering
+        // Find min and max indices in the subset
+        unsigned int minIndex = triangleIndices[0];
+        unsigned int maxIndex = triangleIndices[0];
+        for (unsigned int index : triangleIndices) {
+            minIndex = std::min(minIndex, index);
+            maxIndex = std::max(maxIndex, index);
+        }
+        
+        // Draw only the specified triangles using the existing index buffer
+        // We need to create a temporary index buffer for the subset
+        GLuint tempEBO;
+        glGenBuffers(1, &tempEBO);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, tempEBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, triangleIndices.size() * sizeof(unsigned int), triangleIndices.data(), GL_STATIC_DRAW);
+        
+        glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(triangleIndices.size()), GL_UNSIGNED_INT, 0);
+        
+        // Restore the original EBO
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glDeleteBuffers(1, &tempEBO);
         glBindVertexArray(0);
     }
 }

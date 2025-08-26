@@ -50,10 +50,12 @@ public:
     bool createMesh(const std::vector<float>& vertexData, const std::vector<unsigned int>& indexData);
     bool createMeshWithNormals(const std::vector<float>& vertexData, const std::vector<unsigned int>& indexData);
     bool createMeshWithTexCoords(const std::vector<float>& vertexData, const std::vector<unsigned int>& indexData);
+    bool createMeshWithNormalsAndTexCoords(const std::vector<float>& vertexData, const std::vector<unsigned int>& indexData);
     void cleanup();
     
     // Rendering
     void render() const;
+    void renderTriangles(const std::vector<unsigned int>& triangleIndices) const;
     
     // Utility
     bool isValid() const { return isInitialized; }

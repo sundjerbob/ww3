@@ -6,6 +6,7 @@
  */
 
 #include "OBJLoader.h"
+#include "../Rendering/MaterialLoader.h"
 #include <functional>
 
 namespace Engine {
@@ -43,6 +44,8 @@ OBJMeshData OBJLoader::loadOBJWithProgress(
     std::vector<Vec3> normals;
     std::vector<Vec2> texCoords;
     std::vector<Face> faces;
+    std::vector<std::string> faceMaterialNames; // Material name for each face
+    std::string currentMaterial = ""; // Current material being used
     
     // Reserve space for efficiency (estimate based on typical OBJ files)
     try {
@@ -116,6 +119,8 @@ OBJMeshData OBJLoader::loadOBJWithProgress(
                 for (const auto& face : triangulatedFaces) {
                     if (face.v1 > 0) { // Valid face
                         faces.push_back(face);
+                        // Associate this face with the current material
+                        faceMaterialNames.push_back(currentMaterial);
                     }
                 }
             }
@@ -123,6 +128,25 @@ OBJMeshData OBJLoader::loadOBJWithProgress(
                 logWarning("Failed to parse face on line " + std::to_string(lineCount) + ": " + line);
                 continue;
             }
+        }
+        else if (line.substr(0, 7) == "mtllib ") {
+            // Material library file
+            std::string mtlFilename = line.substr(7);
+            // Remove any trailing whitespace/newlines
+            while (!mtlFilename.empty() && (mtlFilename.back() == ' ' || mtlFilename.back() == '\t' || mtlFilename.back() == '\r' || mtlFilename.back() == '\n')) {
+                mtlFilename.pop_back();
+            }
+            logInfo("Found material library: " + mtlFilename);
+            // MTL loading will be done after parsing the OBJ file
+        }
+        else if (line.substr(0, 7) == "usemtl ") {
+            // Use material
+            currentMaterial = line.substr(7);
+            // Remove any trailing whitespace/newlines
+            while (!currentMaterial.empty() && (currentMaterial.back() == ' ' || currentMaterial.back() == '\t' || currentMaterial.back() == '\r' || currentMaterial.back() == '\n')) {
+                currentMaterial.pop_back();
+            }
+            logInfo("Using material: " + currentMaterial);
         }
     }
     
@@ -199,10 +223,28 @@ OBJMeshData OBJLoader::loadOBJWithProgress(
     try {
         buildFinalMesh(vertices, faces, meshData, scale);
         meshData.calculateBounds();
+        
+        // Copy face material associations
+        meshData.faceMaterials = faceMaterialNames;
+        logInfo("Associated " + std::to_string(meshData.faceMaterials.size()) + " faces with materials");
     }
     catch (const std::exception& e) {
         logError("Failed to build final mesh: " + std::string(e.what()));
         return OBJMeshData{};
+    }
+    
+    // Load materials from MTL file
+    logInfo("Loading materials from MTL file...");
+    std::string mtlFilePath = MaterialLoader::getMTLPathFromOBJ(filepath);
+    if (MaterialLoader::isValidMTLFile(mtlFilePath)) {
+        meshData.materials = MaterialLoader::loadMTL(mtlFilePath);
+        logInfo("Loaded " + std::to_string(meshData.materials.getMaterialCount()) + " materials");
+    } else {
+        logWarning("MTL file not found or invalid: " + mtlFilePath);
+        // Create a default material
+        Material defaultMaterial("default");
+        defaultMaterial.diffuse = Vec3(0.8f, 0.8f, 0.8f); // Light gray
+        meshData.materials.addMaterial(defaultMaterial);
     }
     
     logInfo("Loading complete: 100%");

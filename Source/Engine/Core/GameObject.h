@@ -14,6 +14,7 @@
 
 #pragma once
 #include "../Math/Math.h"
+#include "../Rendering/RendererFactory.h"
 #include <memory>
 #include <string>
 #include <vector>
@@ -41,14 +42,20 @@ protected:
     Vec3 rotation;      // Euler angles in degrees
     Vec3 scale;
     
+    // Parent-child system
+    GameObject* parent;
+    std::vector<std::unique_ptr<GameObject>> children;
+    
     // Rendering
     std::unique_ptr<Mesh> mesh;
     Renderer* objectRenderer; // non-owning; set by game/scene
+    Vec3 color; // Object color for rendering
     
     // Object state
     std::string name;
     bool isActive;
     bool isInitialized;
+    bool isEntity;  // Flag to identify entity objects (cubes, NPCs, etc.) vs system objects (ground, UI, etc.)
     
     // Update timing
     float lastUpdateTime;
@@ -76,6 +83,12 @@ public:
     // Transform matrix
     Mat4 getModelMatrix() const;
     
+    // World transform (includes parent transforms)
+    Vec3 getWorldPosition() const;
+    Vec3 getWorldRotation() const;
+    Vec3 getWorldScale() const;
+    Mat4 getWorldModelMatrix() const;
+    
     // Object state
     void setActive(bool active) { isActive = active; }
     bool getActive() const { return isActive; }
@@ -83,10 +96,29 @@ public:
     void setName(const std::string& objectName) { name = objectName; }
     const std::string& getName() const { return name; }
     
+    // Entity system
+    void setEntity(bool entity) { isEntity = entity; }
+    bool getEntity() const { return isEntity; }
+    
+    // Color system
+    void setColor(const Vec3& objectColor) { color = objectColor; }
+    Vec3 getColor() const { return color; }
+    
+    // Parent-child system
+    void addChild(std::unique_ptr<GameObject> child);
+    void removeChild(GameObject* child);
+    void setParent(GameObject* newParent);
+    GameObject* getParent() const { return parent; }
+    const std::vector<std::unique_ptr<GameObject>>& getChildren() const { return children; }
+    
     // Utility
     bool isValid() const { return isInitialized && isActive; }
     void setRenderer(Renderer* renderer) { objectRenderer = renderer; }
+    Renderer* getRenderer() const { return objectRenderer; }
     const Mesh* getMesh() const { return mesh.get(); }
+    
+    // Renderer selection - derived classes can override to choose their renderer
+    virtual RendererType getPreferredRendererType() const { return RendererType::Basic; }
     
 protected:
     // Helper methods for derived classes

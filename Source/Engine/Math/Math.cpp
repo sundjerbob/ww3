@@ -69,6 +69,20 @@ float Vec3::dot(const Vec3& other) const {
     return x * other.x + y * other.y + z * other.z; 
 }
 
+Vec3& Vec3::operator+=(const Vec3& other) {
+    x += other.x;
+    y += other.y;
+    z += other.z;
+    return *this;
+}
+
+Vec3& Vec3::operator*=(float scalar) {
+    x *= scalar;
+    y *= scalar;
+    z *= scalar;
+    return *this;
+}
+
 // ===== GLOBAL VEC2 FUNCTIONS =====
 
 Vec2 normalize(const Vec2& v) {
@@ -87,6 +101,20 @@ Vec3 cross(const Vec3& a, const Vec3& b) {
 Vec3 normalize(const Vec3& v) {
     float len = sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
     return len > 0 ? Vec3(v.x / len, v.y / len, v.z / len) : Vec3(0, 0, 0);
+}
+
+// ===== VEC4 IMPLEMENTATIONS =====
+
+Vec4 Vec4::operator+(const Vec4& other) const { 
+    return Vec4(x + other.x, y + other.y, z + other.z, w + other.w); 
+}
+
+Vec4 Vec4::operator-(const Vec4& other) const { 
+    return Vec4(x - other.x, y - other.y, z - other.z, w - other.w); 
+}
+
+Vec4 Vec4::operator*(float scalar) const { 
+    return Vec4(x * scalar, y * scalar, z * scalar, w * scalar); 
 }
 
 // ===== MAT3 IMPLEMENTATIONS =====
@@ -129,6 +157,21 @@ Mat4 multiply(const Mat4& a, const Mat4& b) {
         }
     }
     return result;
+}
+
+// Matrix-matrix multiplication
+Mat4 operator*(const Mat4& a, const Mat4& b) {
+    return multiply(a, b);  // Use existing multiply function
+}
+
+// Matrix-vector multiplication
+Vec4 operator*(const Mat4& matrix, const Vec4& vector) {
+    return Vec4(
+        matrix.m[0] * vector.x + matrix.m[4] * vector.y + matrix.m[8] * vector.z + matrix.m[12] * vector.w,
+        matrix.m[1] * vector.x + matrix.m[5] * vector.y + matrix.m[9] * vector.z + matrix.m[13] * vector.w,
+        matrix.m[2] * vector.x + matrix.m[6] * vector.y + matrix.m[10] * vector.z + matrix.m[14] * vector.w,
+        matrix.m[3] * vector.x + matrix.m[7] * vector.y + matrix.m[11] * vector.z + matrix.m[15] * vector.w
+    );
 }
 
 // ===== TRANSFORMATION MATRICES =====

@@ -16,6 +16,7 @@
 namespace Engine {
 
 class Mesh;
+class Shader;
 
 /**
  * Abstract Renderer Interface
@@ -48,6 +49,9 @@ public:
     // Queries
     virtual float getAspectRatio() const = 0;
     virtual const Mat4& getProjectionMatrix() const = 0;
+    
+    // Get shader for custom rendering
+    virtual Shader* getShader() const = 0;
 };
 
 } // namespace Engine

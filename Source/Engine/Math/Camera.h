@@ -36,10 +36,16 @@ namespace Engine {
 class Camera {
 private:
     Vec3 position;       // Current camera/player position in world space
+    Vec3 lastPosition;   // Previous camera position for velocity calculation
     Vec3 up;            // World up vector (usually [0,1,0])
     Vec3 forward;       // Forward viewing direction vector
     Vec3 right;         // Right strafe direction vector
     float yaw, pitch;   // Viewing direction angles (radians)
+    
+    // Recoil system
+    Vec3 baseRotation;   // Original rotation before recoil
+    Vec3 recoilRotation; // Current recoil rotation offset
+    float recoilRecoveryRate; // Rate at which camera recoil recovers
 
 public:
     // Constructor
@@ -63,14 +69,21 @@ public:
     
     // Getters
     Vec3 getPosition() const { return position; }
+    Vec3 getLastPosition() const { return lastPosition; }
     Vec3 getForward() const { return forward; }
     Vec3 getRight() const { return right; }
     float getYaw() const { return yaw; }
     float getPitch() const { return pitch; }
+    Vec3 getRotation() const; // Get rotation in degrees (x=pitch, y=yaw, z=roll)
     
     // Setters
     void setPosition(const Vec3& pos) { position = pos; }
     void setRotation(const Vec3& rot); // Set rotation in degrees (x=pitch, y=yaw, z=roll)
+    void setTopDownView(); // Set camera to true top-down view (pitch=-90°, yaw=0°)
+    
+    // Recoil system
+    void updateRecoil(float deltaTime);
+    void applyRecoil(const Vec3& recoil);
 };
 
 } // namespace Engine

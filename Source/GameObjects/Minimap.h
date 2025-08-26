@@ -17,6 +17,7 @@
 #include "../Engine/Rendering/Mesh.h"
 #include "../Engine/Rendering/Shader.h"
 #include "../Engine/Math/Camera.h"
+#include "SimpleChunkTerrainGround.h"
 #include <memory>
 #include <vector>
 
@@ -24,6 +25,7 @@ namespace Engine {
 
 class Scene;
 class Renderer;
+class Arrow;
 
 /**
  * Minimap - 2D Minimap GameObject
@@ -55,6 +57,7 @@ private:
     // Shaders
     std::unique_ptr<Shader> minimapShader;      // For rendering minimap texture
     std::unique_ptr<Shader> orthographicShader; // For orthographic rendering
+    std::unique_ptr<Shader> arrowShader;        // For rendering arrow with color
     
     // Camera for orthographic view
     Camera orthographicCamera;
@@ -62,8 +65,27 @@ private:
     // GPU-based rendering: Store scene objects for individual rendering
     std::vector<const GameObject*> sceneObjects;
     
+    // Caching and state management
+    bool sceneObjectsDirty;
+    int lastUpdateFrame;    
+    Vec3 lastPlayerPosition;
+    
     // Scene reference for gathering objects
     Scene* scene;
+    
+    // Player tracking
+    Vec3 playerPosition;
+    float playerYaw; // Store player direction for arrow rotation
+    Vec3 playerForwardDirection; // Store player's forward direction vector
+    
+    // World offset for minimap movement
+    Vec3 worldOffset; // Accumulated world offset for minimap movement
+    
+    // Entity system
+    class Ground* groundReference;
+    
+    // Terrain system
+    class SimpleChunkTerrainGround* terrainReference;
     
     // State
     bool isFramebufferInitialized;
@@ -83,6 +105,24 @@ public:
     // Setup
     void setScene(Scene* sceneRef) { scene = sceneRef; }
     void setMinimapSize(float size) { minimapSize = size; }
+    void setPlayerPosition(const Vec3& position);
+    
+    // Entity system
+    void setGroundReference(class Ground* ground) { groundReference = ground; }
+    
+    // Player direction arrow (separate object - non-owning pointer + owning pointer)
+    Arrow* playerArrow;
+    std::unique_ptr<Arrow> playerArrowPtr;  // Owns the arrow object
+    void setPlayerDirection(const Vec3& direction);
+    void setPlayerDirectionFromYaw(float yawDegrees);
+    
+    // Configurable scope
+    float configurableScopeSize;
+    void setScopeSize(float size) { configurableScopeSize = size; }
+    float getScopeSize() const { return configurableScopeSize; }
+    
+    // Force update when needed
+    void forceUpdate() { sceneObjectsDirty = true; }
     
     // Minimap dimension configuration
     void setMinimapDimensions(int width, int height);
@@ -104,11 +144,17 @@ private:
     bool updateSceneObjects();  // GPU-based: Update list of objects to render
     void renderSceneToTexture();
     void renderMinimapTexture();
+    void renderArrowOverlay();  // Render arrow as 2D overlay on minimap
+    void renderCenterIndicator(); // Render simple center indicator
+    void renderPlayerPositionIndicator(); // Render player position dot on minimap
     void setupMesh(); // Override from GameObject
     
     // Utility
     void cleanupFramebuffer();
     bool isValid() const { return isInitialized && isFramebufferInitialized; }
+    
+    // Safety check for coordinate validation
+    bool isEntityInMinimapScope(const GameObject* entity) const;
 };
 
 } // namespace Engine

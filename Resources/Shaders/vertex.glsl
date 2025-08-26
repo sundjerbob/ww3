@@ -27,12 +27,14 @@
 
 #version 330 core
 layout (location = 0) in vec3 aPos; // Vertex position attribute from VBO
+layout (location = 1) in vec3 aNormal; // Vertex normal attribute from VBO
 
 // Transformation matrices (uniforms are constant for all vertices in a draw call)
 uniform mat4 model;      // Object-to-world transformation
 uniform mat4 view;       // World-to-camera transformation  
 uniform mat4 projection; // Camera-to-clip transformation
 out vec3 outPos;
+out vec3 outNormal;
 
 void main()
 {
@@ -42,6 +44,11 @@ void main()
     // Calculate world position for fragment shader color logic
     vec4 worldPos = model * vec4(aPos, 1.0);
     outPos = worldPos.xyz;
+    
+    // Transform normal to world space for lighting calculations
+    // Note: We need to use the inverse transpose of the model matrix for proper normal transformation
+    // For now, we'll use a simplified approach assuming uniform scaling
+    outNormal = mat3(model) * aNormal;
     
     gl_Position = projection * view * worldPos;
 }

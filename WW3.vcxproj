@@ -104,6 +104,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>GLEW_STATIC;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalIncludeDirectories>$(ProjectDir)Extern\GLEW\include;$(ProjectDir)Extern\GLFW\include;$(ProjectDir)Include;$(ProjectDir)Source;$(ProjectDir)Source\Engine;$(ProjectDir)Source\GameObjects;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
@@ -121,6 +122,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>GLEW_STATIC;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalIncludeDirectories>$(ProjectDir)Extern\GLEW\include;$(ProjectDir)Extern\GLFW\include;$(ProjectDir)Include;$(ProjectDir)Source;$(ProjectDir)Source\Engine;$(ProjectDir)Source\GameObjects;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
@@ -137,6 +139,7 @@
     <ClCompile Include="Source\Engine\Rendering\BasicRenderer.cpp" />
     <ClCompile Include="Source\GameObjects\Crosshair.cpp" />
     <ClCompile Include="Source\Engine\Rendering\CrosshairRenderer.cpp" />
+    <ClCompile Include="Source\Engine\Rendering\RendererFactory.cpp" />
     <ClCompile Include="Source\GameObjects\Cube.cpp" />
     <ClCompile Include="Source\Engine\Core\Game.cpp" />
     <ClCompile Include="Source\Engine\Core\GameObject.cpp" />
@@ -144,6 +147,7 @@
     <ClCompile Include="Source\GameObjects\Ground.cpp" />
     <ClCompile Include="Source\Engine\Input\Input.cpp" />
     <ClCompile Include="Source\GameObjects\Minimap.cpp" />
+    <ClCompile Include="Source\GameObjects\Arrow.cpp" />
     <ClCompile Include="Source\main.cpp" />
     <ClCompile Include="Source\Engine\Math\Math.cpp" />
     <ClCompile Include="Source\Engine\Rendering\Mesh.cpp" />
@@ -151,6 +155,29 @@
     <ClCompile Include="Source\Engine\Rendering\Renderer.cpp" />
     <ClCompile Include="Source\Engine\Core\Scene.cpp" />
     <ClCompile Include="Source\Engine\Rendering\Shader.cpp" />
+    <ClCompile Include="Source\Engine\Rendering\MaterialLoader.cpp" />
+    <ClCompile Include="Source\Engine\Rendering\Texture.cpp" />
+    <ClCompile Include="Source\Engine\Rendering\WeaponRenderer.cpp" />
+    <ClCompile Include="Source\Engine\Rendering\MonsterRenderer.cpp" />
+    <ClCompile Include="Source\GameObjects\Weapon.cpp" />
+    <ClCompile Include="Source\GameObjects\AmmoUI.cpp" />
+    <ClCompile Include="Source\GameObjects\Monster.cpp" />
+    <ClCompile Include="Source\Engine\Rendering\SimpleTextRenderer.cpp" />
+    <ClCompile Include="Source\Engine\Rendering\Light.cpp" />
+    <ClCompile Include="Source\Engine\Rendering\LightManager.cpp" />
+    <ClCompile Include="Source\Engine\Rendering\LightingMaterial.cpp" />
+    <ClCompile Include="Source\Engine\Rendering\LightingRenderer.cpp" />
+    <ClCompile Include="Source\Engine\Rendering\ShadowMap.cpp" />
+    <ClCompile Include="Source\Engine\Core\Projectile.cpp" />
+    <ClCompile Include="Source\Engine\Core\ShootingSystem.cpp" />
+    <!-- Simple Chunk Terrain System -->
+    <ClCompile Include="Source\Engine\Utils\SimpleChunkTerrainGenerator.cpp" />
+    <ClCompile Include="Source\GameObjects\SimpleChunkTerrainGround.cpp" />
+    <!-- Perlin Noise System -->
+    <ClCompile Include="Source\Engine\Utils\PerlinNoise.cpp" />
+    <!-- Water Rendering System -->
+    <ClCompile Include="Source\Engine\Rendering\WaterRenderer.cpp" />
+    <ClCompile Include="Source\GameObjects\Water.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".gitignore" />
@@ -161,12 +188,17 @@
     <None Include="Resources\Shaders\crosshair_fragment.glsl" />
     <None Include="Resources\Shaders\minimap_vertex.glsl" />
     <None Include="Resources\Shaders\minimap_fragment.glsl" />
+    <None Include="Resources\Shaders\arrow_vertex.glsl" />
+    <None Include="Resources\Shaders\arrow_fragment.glsl" />
+    <None Include="Resources\Shaders\water_vertex.glsl" />
+    <None Include="Resources\Shaders\water_fragment.glsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Engine\Math\Camera.h" />
     <ClInclude Include="Source\Engine\Rendering\BasicRenderer.h" />
     <ClInclude Include="Source\GameObjects\Crosshair.h" />
     <ClInclude Include="Source\Engine\Rendering\CrosshairRenderer.h" />
+    <ClInclude Include="Source\Engine\Rendering\RendererFactory.h" />
     <ClInclude Include="Source\GameObjects\Cube.h" />
     <ClInclude Include="Source\Engine\Core\Game.h" />
     <ClInclude Include="Source\Engine\Core\GameObject.h" />
@@ -174,12 +206,22 @@
     <ClInclude Include="Source\GameObjects\Ground.h" />
     <ClInclude Include="Source\Engine\Input\Input.h" />
     <ClInclude Include="Source\GameObjects\Minimap.h" />
+    <ClInclude Include="Source\GameObjects\Arrow.h" />
     <ClInclude Include="Source\Engine\Math\Math.h" />
     <ClInclude Include="Source\Engine\Rendering\Mesh.h" />
     <ClInclude Include="Source\Engine\Utils\OBJLoader.h" />
     <ClInclude Include="Source\Engine\Rendering\Renderer.h" />
     <ClInclude Include="Source\Engine\Core\Scene.h" />
     <ClInclude Include="Source\Engine\Rendering\Shader.h" />
+    <ClInclude Include="Source\GameObjects\Weapon.h" />
+    <!-- Infinite Terrain System -->
+    <ClInclude Include="Source\Engine\Utils\TerrainGenerator.h" />
+    <ClInclude Include="Source\Engine\Utils\InfiniteTerrainGenerator.h" />
+    <ClInclude Include="Source\GameObjects\InfiniteTerrainGround.h" />
+    <ClInclude Include="Source\GameObjects\TerrainChunk.h" />
+    <!-- Water Rendering System -->
+    <ClInclude Include="Source\Engine\Rendering\WaterRenderer.h" />
+    <ClInclude Include="Source\GameObjects\Water.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

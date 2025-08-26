@@ -17,6 +17,8 @@ Input* Input::instance = nullptr;
 Input::Input() : lastX(300), lastY(300), firstMouse(true), mouseSensitivity(0.002f), camera(nullptr) {
     // Initialize all keys to false
     memset(keys, false, sizeof(keys));
+    // Initialize all mouse buttons to false
+    memset(mouseButtons, false, sizeof(mouseButtons));
 }
 
 Input& Input::getInstance() {
@@ -36,6 +38,7 @@ void Input::initialize(GLFWwindow* window, Camera* cam) {
     
     // Set GLFW callbacks
     glfwSetKeyCallback(window, keyCallback);
+    glfwSetMouseButtonCallback(window, mouseButtonCallback);
     glfwSetCursorPosCallback(window, mouseCallback);
     glfwSetScrollCallback(window, scrollCallback);
     
@@ -47,7 +50,9 @@ void Input::processInput(float deltaTime) {
     if (!camera) return;
     
     // Reduced movement speed for more controlled camera movement
-    float speed = 2.0f * deltaTime;
+    float speed = 5.0f;
+    // adjust for fps independent movement speed
+    speed *= deltaTime;
     
     // WASD movement
     if (keys[GLFW_KEY_W]) {
@@ -75,6 +80,13 @@ void Input::processInput(float deltaTime) {
 bool Input::isKeyPressed(int key) const {
     if (key >= 0 && key < 1024) {
         return keys[key];
+    }
+    return false;
+}
+
+bool Input::isMouseButtonPressed(int button) const {
+    if (button >= 0 && button < 8) {
+        return mouseButtons[button];
     }
     return false;
 }
@@ -107,6 +119,18 @@ void Input::keyCallback(GLFWwindow* window, int key, int scancode, int action, i
     if (key == GLFW_KEY_F9 && action == GLFW_PRESS) {
         if (input.fullscreenToggleCallback) {
             input.fullscreenToggleCallback();
+        }
+    }
+}
+
+void Input::mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
+    Input& input = getInstance();
+    
+    if (button >= 0 && button < 8) {
+        if (action == GLFW_PRESS) {
+            input.mouseButtons[button] = true;
+        } else if (action == GLFW_RELEASE) {
+            input.mouseButtons[button] = false;
         }
     }
 }

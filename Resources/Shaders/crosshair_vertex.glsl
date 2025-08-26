@@ -7,8 +7,9 @@ uniform mat4 projection;
 
 void main()
 {
-    // For 2D overlay, we ignore view and projection matrices
-    // and work directly in NDC space
-    gl_Position = vec4(aPos, 1.0);
+    // Apply model matrix for positioning, then work in NDC space
+    // This allows us to position UI elements anywhere on screen
+    vec4 worldPos = model * vec4(aPos, 1.0);
+    gl_Position = worldPos;
 }
 

@@ -27,6 +27,7 @@
 #include <sstream>
 #include <functional>
 #include "../Math/Math.h"
+#include "../Rendering/Material.h"
 
 namespace Engine {
 
@@ -46,6 +47,10 @@ struct OBJMeshData {
     std::vector<unsigned int> indices;  // Triangle indices
     unsigned int vertexCount = 0;
     unsigned int triangleCount = 0;
+    
+    // Material information
+    MaterialLibrary materials;          // All materials loaded from .mtl file
+    std::vector<std::string> faceMaterials; // Material name for each face/triangle
     
     // Mesh statistics
     Vec3 boundingBoxMin;

@@ -4,7 +4,7 @@
 
 #include "Chunk.h"
 #include "../Engine/Rendering/Mesh.h"
-#include "../Engine/Rendering/Renderer.h"
+#include "../Engine/Rendering/Renderer.h"   
 #include "../Engine/Math/Math.h"
 #include <iostream>
 #include <cmath>
@@ -15,21 +15,31 @@ Chunk::Chunk(const std::string& name, const Vec2& position, int size, float cube
     : GameObject(name), chunkPosition(position), chunkSize(size), cubeSize(cubeSize) {
     
     // Set chunk position in world space
-    float worldX = position.x * size * cubeSize;
-    float worldZ = position.y * size * cubeSize;
+    float worldX = static_cast<float>(position.x) * static_cast<float>(size) * cubeSize;
+    float worldZ = static_cast<float>(position.y) * static_cast<float>(size) * cubeSize;
     setPosition(Vec3(worldX, 0.0f, worldZ));
     
     // Initialize height map
     heightMap.resize(size, std::vector<float>(size, 0.0f));
     generateHeightMap();
     
-    // Set default color
-    color = Vec3(0.4f, 0.3f, 0.2f);
+    // Set default color using base class method
+    setColor(Vec3(0.4f, 0.3f, 0.2f));
 }
 
 void Chunk::generateHeightMap() {
     // Simple flat terrain for now - all heights are 0
     // This will be expanded later with proper terrain generation
+    for (int x = 0; x < chunkSize; x++) {
+        for (int z = 0; z < chunkSize; z++) {
+            heightMap[x][z] = 0.0f;
+        }
+    }
+}
+
+void Chunk::regenerateHeightMap() {
+    // Regenerate height map for new chunk position
+    // This will be expanded later with proper terrain generation based on chunk coordinates
     for (int x = 0; x < chunkSize; x++) {
         for (int z = 0; z < chunkSize; z++) {
             heightMap[x][z] = 0.0f;
@@ -47,12 +57,12 @@ float Chunk::getHeightAt(int x, int z) const {
 bool Chunk::isInRenderDistance(const Vec3& playerPosition, float renderDistance) const {
     // Calculate distance from player to chunk center
     Vec3 chunkCenter = getPosition();
-    chunkCenter.x += (chunkSize * cubeSize) / 2.0f;
-    chunkCenter.z += (chunkSize * cubeSize) / 2.0f;
+    chunkCenter.x += (static_cast<float>(chunkSize) * cubeSize) / 2.0f;
+    chunkCenter.z += (static_cast<float>(chunkSize) * cubeSize) / 2.0f;
     
     float distance = sqrt(
-        (playerPosition.x - chunkCenter.x) * (playerPosition.x - chunkCenter.x) +
-        (playerPosition.z - chunkCenter.z) * (playerPosition.z - chunkCenter.z)
+        static_cast<float>((playerPosition.x - chunkCenter.x) * (playerPosition.x - chunkCenter.x) +
+        (playerPosition.z - chunkCenter.z) * (playerPosition.z - chunkCenter.z))
     );
     
     return distance <= renderDistance;
@@ -62,7 +72,7 @@ void Chunk::setupMesh() {
     // For now, create a simple flat mesh like the original ground
     // This will be expanded to create actual cube geometry later
     
-    float halfSize = (chunkSize * cubeSize) / 2.0f;
+    float halfSize = (static_cast<float>(chunkSize) * cubeSize) / 2.0f;
     std::vector<float> vertices = {
         // Ground plane (facing up)
         -halfSize, 0.0f, -halfSize,  // 0: bottom-left
@@ -94,7 +104,9 @@ void Chunk::render(const Renderer& renderer, const Camera& camera) {
         return;
     }
     Mat4 modelMatrix = getModelMatrix();
-    renderer.renderMesh(*mesh, modelMatrix, camera, color);
+    
+    // Use individual colors for all chunks (no height-based coloring)
+    renderer.renderMesh(*mesh, modelMatrix, camera, getColor());
 }
 
 } // namespace Engine

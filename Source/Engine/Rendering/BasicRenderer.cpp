@@ -36,7 +36,7 @@ bool BasicRenderer::initialize(int width, int height) {
 }
 
 bool BasicRenderer::initializeOpenGL() {
-    glViewport(0, 0, windowWidth, windowHeight);
+    glViewport(0, 0, static_cast<GLsizei>(windowWidth), static_cast<GLsizei>(windowHeight));
     glEnable(GL_DEPTH_TEST);
     return true;
 }
@@ -71,7 +71,7 @@ void BasicRenderer::endFrame(GLFWwindow* window) {
 void BasicRenderer::setViewport(int width, int height) {
     windowWidth = width;
     windowHeight = height;
-    glViewport(0, 0, width, height);
+    glViewport(0, 0, static_cast<GLsizei>(width), static_cast<GLsizei>(height));
     updateProjectionMatrix();
 }
 
@@ -83,12 +83,36 @@ void BasicRenderer::renderMesh(const Mesh& mesh,
                                const Mat4& modelMatrix,
                                const Camera& camera,
                                const Vec3& color) const {
+    // Always use object colors (no height-based coloring)
+    renderMesh(mesh, modelMatrix, camera, color, false);
+}
+
+void BasicRenderer::renderMesh(const Mesh& mesh,
+                               const Mat4& modelMatrix,
+                               const Camera& camera,
+                               const Vec3& color,
+                               bool useHeightColoring) const {
     if (!isInitialized || !objectShader) return;
     objectShader->use();
+    
+    // Set coloring mode based on parameter
+    objectShader->setInt("useHeightColoring", useHeightColoring ? 1 : 0);
+
     objectShader->setMat4("model", modelMatrix);
     objectShader->setMat4("view", camera.getViewMatrix());
     objectShader->setMat4("projection", camera.getProjectionMatrix());
     objectShader->setVec3("color", color);
+    
+    // Set lighting uniforms for terrain
+    if (useHeightColoring) {
+        // Directional light from the sun (slightly above and to the side)
+        objectShader->setVec3("lightDirection", Vec3(0.5f, 0.8f, 0.3f));
+        objectShader->setVec3("lightColor", Vec3(1.0f, 0.95f, 0.8f)); // Warm sunlight
+        objectShader->setVec3("ambientColor", Vec3(0.3f, 0.3f, 0.4f)); // Blue-ish ambient
+        objectShader->setFloat("ambientStrength", 0.3f);
+        objectShader->setFloat("diffuseStrength", 0.7f);
+    }
+    
     mesh.render();
 }
 

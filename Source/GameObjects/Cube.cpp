@@ -10,9 +10,15 @@
 namespace Engine {
 
 Cube::Cube(const std::string& name, const Vec3& cubeColor)
-    : GameObject(name), color(cubeColor), isRotating(false), rotationSpeed(90.0f) {
+    : GameObject(name), isRotating(false), rotationSpeed(90.0f) {
+    // Set the color using the base class method
+    setColor(cubeColor);
+    
     // Set default scale for cube
     setScale(Vec3(1.0f, 1.0f, 1.0f));
+    
+    // Mark as entity for chunk-based rendering
+    setEntity(true);
 }
 
 void Cube::update(float deltaTime) {
@@ -77,7 +83,7 @@ void Cube::setupMesh() {
 void Cube::render(const Renderer& renderer, const Camera& camera) {
     if (!isActive || !isInitialized || !mesh) return;
     Mat4 modelMatrix = getModelMatrix();
-    renderer.renderMesh(*mesh, modelMatrix, camera, color);
+    renderer.renderMesh(*mesh, modelMatrix, camera, getColor());
 }
 
 } // namespace Engine

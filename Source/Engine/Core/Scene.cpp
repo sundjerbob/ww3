@@ -4,6 +4,7 @@
 
 #include "Scene.h"
 #include "../Rendering/Renderer.h"
+#include "../../GameObjects/Ground.h"
 #include <iostream>
 #include <algorithm>
 
@@ -11,7 +12,7 @@ namespace Engine {
 
 Scene::Scene(const std::string& name)
     : sceneName(name), isInitialized(false), isActive(true),
-      totalObjects(0), activeObjects(0), renderedObjects(0) {}
+      totalObjects(0), activeObjects(0), renderedObjects(0), groundReference(nullptr) {}
 
 Scene::~Scene() {
     cleanup();
@@ -61,13 +62,30 @@ void Scene::update(float deltaTime) {
 void Scene::render(const Camera& camera, const Renderer& renderer) {
     if (!isActive || !isInitialized) return;
     
+    // Update Ground's entity visibility system before rendering
+    updateGroundEntityVisibility();
+    
     renderedObjects = 0;
     
     // Render all active game objects
     for (auto& object : gameObjects) {
         if (object->getActive() && object->isValid()) {
-            object->render(renderer, camera);
-            renderedObjects++;
+            // Skip monsters - they are rendered separately with WeaponRenderer
+            if (object->getName().find("Monster_") == 0) {
+                continue;
+            }
+            
+            // Check if this is an entity that should be rendered based on chunk visibility
+            if (object->getEntity()) {
+                if (shouldRenderEntity(object.get())) {
+                    object->render(renderer, camera);
+                    renderedObjects++;
+                }
+            } else {
+                // Non-entity objects (system objects) always render
+                object->render(renderer, camera);
+                renderedObjects++;
+            }
         }
     }
 }
@@ -234,6 +252,36 @@ void Scene::cleanupDestroyedObjects() {
             ++it;
         }
     }
+}
+
+bool Scene::shouldRenderEntity(const GameObject* entity) const {
+    // If no ground reference, render all entities (fallback)
+    if (!groundReference) {
+        return true;
+    }
+    
+    // Check if entity is on a visible chunk
+    return groundReference->isEntityOnVisibleChunk(entity->getPosition());
+}
+
+void Scene::updateGroundEntityVisibility() {
+    if (groundReference) {
+        // Update Ground's visibility system with all entities in the scene
+        groundReference->updateEntityVisibility(gameObjects);
+    }
+}
+
+std::vector<GameObject*> Scene::getAllGameObjects() const {
+    std::vector<GameObject*> objects;
+    objects.reserve(gameObjects.size());
+    
+    for (const auto& object : gameObjects) {
+        if (object && object->getActive() && object->isValid()) {
+            objects.push_back(object.get());
+        }
+    }
+    
+    return objects;
 }
 
 } // namespace Engine

@@ -6,11 +6,14 @@
  */
 
 #include "Camera.h"
+#include <iostream>
+#include <algorithm>
 
 namespace Engine {
 
 Camera::Camera() 
-    : position(0, 0, 5), up(0, 1, 0), yaw(-90.0f * 3.14159f / 180.0f), pitch(0) {
+    : position(8, 10, 8), lastPosition(8, 10, 8), up(0, 1, 0), yaw(-90.0f * 3.14159f / 180.0f), pitch(0),
+      baseRotation(0.0f, 0.0f, 0.0f), recoilRotation(0.0f, 0.0f, 0.0f), recoilRecoveryRate(5.0f) {
     updateCameraVectors();
 }
 
@@ -43,6 +46,9 @@ Mat4 Camera::getProjectionMatrix() const {
 }
 
 void Camera::moveForward(float distance) {
+    // Store last position before moving
+    lastPosition = position;
+    
     // Move forward along camera's viewing direction (horizontal only)
     Vec3 forwardMovement = forward;
     forwardMovement.y = 0; // Keep movement horizontal (no flying when looking up/down)
@@ -51,6 +57,9 @@ void Camera::moveForward(float distance) {
 }
 
 void Camera::moveBackward(float distance) {
+    // Store last position before moving
+    lastPosition = position;
+    
     // Move backward opposite to camera's viewing direction (horizontal only)
     Vec3 backwardMovement = forward;
     backwardMovement.y = 0; // Keep movement horizontal
@@ -59,21 +68,33 @@ void Camera::moveBackward(float distance) {
 }
 
 void Camera::strafeLeft(float distance) {
+    // Store last position before moving
+    lastPosition = position;
+    
     // Strafe left perpendicular to viewing direction
     position = position - right * distance;
 }
 
 void Camera::strafeRight(float distance) {
+    // Store last position before moving
+    lastPosition = position;
+    
     // Strafe right perpendicular to viewing direction
     position = position + right * distance;
 }
 
 void Camera::moveUp(float distance) {
+    // Store last position before moving
+    lastPosition = position;
+    
     // Move up along world Y-axis (jumping)
     position.y += distance;
 }
 
 void Camera::moveDown(float distance) {
+    // Store last position before moving
+    lastPosition = position;
+    
     // Move down along world Y-axis (crouching)
     position.y -= distance;
 }
@@ -97,12 +118,79 @@ void Camera::setRotation(const Vec3& rot) {
     pitch = rot.x * 3.14159f / 180.0f;
     yaw = rot.y * 3.14159f / 180.0f;
     
-    // Constrain pitch to prevent camera flipping
+    // Constrain pitch to prevent camera flipping (but allow -90° for top-down view)
     const float maxPitch = 89.0f * 3.14159f / 180.0f;
     if (pitch > maxPitch) pitch = maxPitch;
     if (pitch < -maxPitch) pitch = -maxPitch;
     
+    // Special case: Allow exactly -90° for top-down view (minimap)
+    if (rot.x == -90.0f) {
+        pitch = -90.0f * 3.14159f / 180.0f;
+    }
+    
     updateCameraVectors();
+}
+
+void Camera::setTopDownView() {
+    // Set camera to true top-down view
+    pitch = -90.0f * 3.14159f / 180.0f; // Exactly -90 degrees (looking straight down)
+    yaw = 0.0f; // Facing north (doesn't matter for top-down, but keep it consistent)
+    
+    updateCameraVectors();
+}
+
+Vec3 Camera::getRotation() const {
+    // Return rotation in degrees (x=pitch, y=yaw, z=roll)
+    return Vec3(
+        pitch * 180.0f / 3.14159f,  // Convert pitch from radians to degrees
+        yaw * 180.0f / 3.14159f,    // Convert yaw from radians to degrees
+        0.0f                        // Roll is always 0 for FPS camera
+    );
+}
+
+// Recoil system implementation
+void Camera::applyRecoil(const Vec3& recoil) {
+    // Store base rotation if this is the first recoil
+    if (recoilRotation.x == 0.0f && recoilRotation.y == 0.0f) {
+        baseRotation = getRotation();
+    }
+    
+    // Apply recoil to camera rotation (pitch upward)
+    float cameraRecoil = recoil.y * 3.0f; // Much stronger camera recoil for visibility
+    recoilRotation.x -= cameraRecoil; // Negative for upward camera movement
+    
+    // Apply the combined rotation (base + recoil)
+    Vec3 finalRotation = baseRotation + recoilRotation;
+    setRotation(finalRotation);
+    
+    std::cout << "=== CAMERA RECOIL APPLIED ===" << std::endl;
+    std::cout << "Base Rotation: (" << baseRotation.x << ", " << baseRotation.y << ", " << baseRotation.z << ")" << std::endl;
+    std::cout << "Recoil Rotation: (" << recoilRotation.x << ", " << recoilRotation.y << ", " << recoilRotation.z << ")" << std::endl;
+    std::cout << "Final Rotation: (" << finalRotation.x << ", " << finalRotation.y << ", " << finalRotation.z << ")" << std::endl;
+}
+
+void Camera::updateRecoil(float deltaTime) {
+    // Fast camera recoil recovery - always return to base rotation
+    if (recoilRotation.x != 0.0f || recoilRotation.y != 0.0f || recoilRotation.z != 0.0f) {
+        // Recover recoil rotation quickly
+        if (recoilRotation.x < 0.0f) {  // Negative values = upward recoil
+            recoilRotation.x += recoilRecoveryRate * deltaTime;
+            recoilRotation.x = std::min(0.0f, recoilRotation.x); // Don't go past zero
+        } else if (recoilRotation.x > 0.0f) {
+            recoilRotation.x -= recoilRecoveryRate * deltaTime;
+            recoilRotation.x = std::max(0.0f, recoilRotation.x);
+        }
+        
+        // Apply the updated rotation
+        Vec3 finalRotation = baseRotation + recoilRotation;
+        setRotation(finalRotation);
+        
+        // Update base rotation when recoil is nearly zero
+        if (std::abs(recoilRotation.x) < 0.01f) {
+            baseRotation = getRotation();
+            recoilRotation.x = 0.0f;
+        }
+    }
 }
 
 } // namespace Engine

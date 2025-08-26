@@ -5,11 +5,18 @@
 #include "Crosshair.h"
 #include "../Engine/Rendering/Mesh.h"
 #include "../Engine/Rendering/Renderer.h"
+#include <iostream>
 
 namespace Engine {
 
 Crosshair::Crosshair(const std::string& name)
-    : GameObject(name) {}
+    : GameObject(name),
+      recoilOffset(0.0f, 0.0f, 0.0f),
+      recoilVelocity(0.0f, 0.0f, 0.0f),
+      recoilRecoveryRate(4.0f) {
+    // Mark as system object (not an entity)
+    setEntity(false);
+}
 
 bool Crosshair::initialize() {
     if (isInitialized) return true;
@@ -45,12 +52,50 @@ void Crosshair::setupMesh() {
     mesh->createMesh(vertices, indices);
 }
 
+void Crosshair::update(float deltaTime) {
+    GameObject::update(deltaTime);
+    
+    // Update recoil system
+    updateRecoil(deltaTime);
+}
+
 void Crosshair::render(const Renderer& renderer, const Camera& camera) {
     if (!isActive || !isInitialized || !mesh) return;
-    // Use the assigned renderer (CrosshairRenderer) instead of the passed renderer
-    const Renderer& selectedRenderer = (objectRenderer != nullptr) ? *objectRenderer : renderer;
     // Render as white; overlay renderer ignores camera and draws in NDC
-    selectedRenderer.renderMesh(*mesh, Mat4(), camera, Vec3(1.0f, 1.0f, 1.0f));
+    // The base class will automatically use the CrosshairRenderer via the factory
+    GameObject::render(renderer, camera);
+}
+
+// Recoil methods
+void Crosshair::applyRecoil(const Vec3& recoil) {
+    // CAMERA-BASED RECOIL (crosshair movement, unlimited, matches weapon rotation)
+    // Scale recoil for screen space coordinates (NDC) - matches weapon rotation
+    float cameraRecoil = recoil.y * 0.8f;  // Same scale as weapon rotation recoil
+    recoilOffset.y += cameraRecoil;  // Positive for crosshair (moves up when weapon tilts up)
+    
+    // Set recoil velocity for smooth movement
+    recoilVelocity.y = recoil.y * 1.0f; // Positive velocity to match weapon upward rotation
+    
+    std::cout << "=== CROSSHAIR RECOIL APPLIED ===" << std::endl;
+    std::cout << "Crosshair Recoil Offset: (" << recoilOffset.x << ", " << recoilOffset.y << ", " << recoilOffset.z << ")" << std::endl;
+}
+
+void Crosshair::updateRecoil(float deltaTime) {
+    // CAMERA RECOIL RECOVERY (unlimited, always returns to center) - FAST RECOVERY
+    if (recoilOffset.y > 0.0f) {
+        recoilOffset.y -= recoilRecoveryRate * 8.0f * deltaTime; // 8x faster recovery for crosshair
+        recoilOffset.y = std::max(0.0f, recoilOffset.y);
+    } else if (recoilOffset.y < 0.0f) {
+        recoilOffset.y += recoilRecoveryRate * 8.0f * deltaTime; // 8x faster recovery for crosshair
+        recoilOffset.y = std::min(0.0f, recoilOffset.y);
+    }
+    
+    // Update recoil velocity for smooth movement - much stronger damping
+    recoilVelocity.y *= (1.0f - deltaTime * 12.0f); // Much stronger damping for faster return
+    
+    // Update crosshair position with recoil offset
+    Vec3 finalPosition = Vec3(0.0f, 0.0f, 0.0f) + recoilOffset;
+    setPosition(finalPosition);
 }
 
 } // namespace Engine

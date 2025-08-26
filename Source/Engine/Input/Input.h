@@ -36,6 +36,7 @@ private:
     
     // Input state
     bool keys[1024];
+    bool mouseButtons[8]; // Support for up to 8 mouse buttons
     float lastX, lastY;
     bool firstMouse;
     float mouseSensitivity;
@@ -66,6 +67,7 @@ public:
     
     // GLFW callback functions (static)
     static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mode);
+    static void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
     static void mouseCallback(GLFWwindow* window, double xpos, double ypos);
     static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
     
@@ -75,6 +77,7 @@ public:
     
     // Key state queries
     bool isKeyPressed(int key) const;
+    bool isMouseButtonPressed(int button) const;
     
     // Mouse state
     void resetMousePosition(float x, float y);
