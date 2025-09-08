@@ -69,6 +69,7 @@ public:
     void removeGameObject(GameObject* object);
     const std::vector<std::unique_ptr<GameObject>>& getGameObjects() const { return gameObjects; }
     std::vector<GameObject*> getAllGameObjects() const;
+    std::vector<GameObject*> getAllObjectsForCollision() const; // Safe collision detection
     
     // Entity system
     void setGroundReference(class Ground* ground) { groundReference = ground; }

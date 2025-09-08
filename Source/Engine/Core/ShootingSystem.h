@@ -172,7 +172,9 @@ public:
     
     // Projectile spawning
     Projectile* spawnProjectile(const Vec3& position, const Vec3& direction);
+    Projectile* spawnMonsterHunterProjectile(const Vec3& position, const Vec3& direction);
     void fireProjectile(const Vec3& position, const Vec3& direction);
+    void fireMonsterHunterProjectile(const Vec3& position, const Vec3& direction);
     
     // Utility
     Vec3 getFireDirection() const;
@@ -228,6 +230,7 @@ public:
     void startFiring();
     void stopFiring();
     void fireSingleShot();
+    void fireMonsterHunterShot();
     
     // Ammunition interface
     bool hasAmmo() const;

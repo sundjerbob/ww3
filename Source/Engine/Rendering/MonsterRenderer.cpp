@@ -126,6 +126,9 @@ void MonsterRenderer::renderMonsterMesh(const Mesh& mesh,
         // Use the provided color (which could be a material color)
         monsterColor = color;
     }
+    
+    // CRITICAL FIX: Disable height coloring for monsters and use the object color
+    monsterShader->setInt("useHeightColoring", 0);
     monsterShader->setVec3("color", monsterColor);
     
     // Handle texture rendering
@@ -185,7 +188,8 @@ void MonsterRenderer::renderMonsterTriangles(const Mesh& mesh,
     monsterShader->setMat4("view", camera.getViewMatrix());
     monsterShader->setMat4("projection", camera.getProjectionMatrix());
     
-    // Set monster color
+    // CRITICAL FIX: Disable height coloring for monsters and use the object color
+    monsterShader->setInt("useHeightColoring", 0);
     monsterShader->setVec3("color", color);
     
     // Handle texture rendering

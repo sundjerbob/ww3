@@ -162,6 +162,8 @@
     <ClCompile Include="Source\GameObjects\Weapon.cpp" />
     <ClCompile Include="Source\GameObjects\AmmoUI.cpp" />
     <ClCompile Include="Source\GameObjects\Monster.cpp" />
+    <ClCompile Include="Source\GameObjects\Player.cpp" />
+    <ClCompile Include="Source\GameObjects\HealthBar.cpp" />
     <ClCompile Include="Source\Engine\Rendering\SimpleTextRenderer.cpp" />
     <ClCompile Include="Source\Engine\Rendering\Light.cpp" />
     <ClCompile Include="Source\Engine\Rendering\LightManager.cpp" />
@@ -214,6 +216,8 @@
     <ClInclude Include="Source\Engine\Core\Scene.h" />
     <ClInclude Include="Source\Engine\Rendering\Shader.h" />
     <ClInclude Include="Source\GameObjects\Weapon.h" />
+    <ClInclude Include="Source\GameObjects\Player.h" />
+    <ClInclude Include="Source\GameObjects\HealthBar.h" />
     <!-- Infinite Terrain System -->
     <ClInclude Include="Source\Engine\Utils\TerrainGenerator.h" />
     <ClInclude Include="Source\Engine\Utils\InfiniteTerrainGenerator.h" />

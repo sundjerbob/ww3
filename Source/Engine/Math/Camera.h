@@ -72,6 +72,7 @@ public:
     Vec3 getLastPosition() const { return lastPosition; }
     Vec3 getForward() const { return forward; }
     Vec3 getRight() const { return right; }
+    Vec3 getUpVector() const { return up; }
     float getYaw() const { return yaw; }
     float getPitch() const { return pitch; }
     Vec3 getRotation() const; // Get rotation in degrees (x=pitch, y=yaw, z=roll)

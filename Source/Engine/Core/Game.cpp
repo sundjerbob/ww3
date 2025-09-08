@@ -1,4 +1,4 @@
-/**
+    /**
  * Game.cpp - Implementation of Main Game Engine Class
  * 
  * Complete implementation of the game engine root class.
@@ -22,6 +22,7 @@
 #include "../../GameObjects/Weapon.h"
 #include "../../GameObjects/AmmoUI.h"
 #include "../../GameObjects/Monster.h"
+#include "../../GameObjects/HealthBar.h"
 #include "../Input/Input.h"
 #include <GL/glew.h>
 #include <iostream>
@@ -38,20 +39,16 @@ Game::~Game() {
 }
 
 bool Game::initialize() {
-    std::cout << "Initializing Game Engine..." << std::endl;
     
     if (!initializeGLFW()) {
-        std::cerr << "Failed to initialize GLFW" << std::endl;
         return false;
     }
     
     if (!createWindow()) {
-        std::cerr << "Failed to create window" << std::endl;
         return false;
     }
     
     if (!initializeGLEW()) {
-        std::cerr << "Failed to initialize GLEW" << std::endl;
         return false;
     }
     
@@ -62,7 +59,6 @@ bool Game::initialize() {
     
     printControls();
     
-    std::cout << "Game Engine initialized successfully!" << std::endl;
     return true;
 }
 
@@ -100,8 +96,6 @@ bool Game::initializeGLEW() {
         return false;
     }
     
-    std::cout << "OpenGL Version: " << glGetString(GL_VERSION) << std::endl;
-    std::cout << "GLEW Version: " << glewGetString(GLEW_VERSION) << std::endl;
     
     return true;
 }
@@ -112,7 +106,6 @@ void Game::setupSystems() {
     
     // Initialize renderer factory (creates and manages all renderers)
     if (!RendererFactory::getInstance().initialize(windowWidth, windowHeight)) {
-        std::cerr << "Failed to initialize renderer factory" << std::endl;
         isRunning = false;
         return;
     }
@@ -120,7 +113,6 @@ void Game::setupSystems() {
     // Initialize scene
     scene = std::make_unique<Scene>("MainScene");
     if (!scene->initialize()) {
-        std::cerr << "Failed to initialize scene" << std::endl;
         isRunning = false;
         return;
     }
@@ -135,7 +127,6 @@ void Game::setupSystems() {
     // Add crosshair object (will automatically use CrosshairRenderer via factory)
     auto crosshairPtr = std::make_unique<Crosshair>("Crosshair");
     if (!crosshairPtr->initialize()) {
-        std::cerr << "Failed to initialize crosshair" << std::endl;
     } else {
         // Store reference before moving
         crosshair = crosshairPtr.get();
@@ -154,7 +145,6 @@ void Game::setupSystems() {
 
 void Game::run() {
     if (!isInitialized) {
-        std::cerr << "Game not initialized! Call initialize() first." << std::endl;
         return;
     }
     
@@ -214,37 +204,65 @@ void Game::update(float deltaTime) {
             camera->updateRecoil(deltaTime);
         }
         
+        // Update projectile manager and check for collisions
+        if (projectileManager) {
+            projectileManager->update(deltaTime);
+            
+            // Get all game objects for collision checking (including monsters)
+            std::vector<GameObject*> allGameObjects;
+            if (scene) {
+                allGameObjects = scene->getAllObjectsForCollision(); // Use collision-safe method
+            }
+            
+            // Check for projectile collisions with monsters
+            projectileManager->checkAllCollisions(allGameObjects);
+        }
+        
         // Handle shooting with mouse buttons
         static bool leftMousePressed = false, rightMousePressed = false;
         
         // Left mouse button for firing
         if (input.isMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT) && !leftMousePressed) {
-            std::cout << "=== STARTING TO FIRE ===" << std::endl;
             weapon->startFiring();
             leftMousePressed = true;
         } else if (!input.isMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT) && leftMousePressed) {
-            std::cout << "=== STOPPING FIRE ===" << std::endl;
             weapon->stopFiring();
             leftMousePressed = false;
         }
         
         // Right mouse button for single shot (alternative firing)
         if (input.isMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT) && !rightMousePressed) {
-            std::cout << "=== FIRING SINGLE SHOT ===" << std::endl;
             weapon->fireSingleShot();
             rightMousePressed = true;
         } else if (!input.isMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT)) {
             rightMousePressed = false;
         }
         
+        // Middle mouse button for monster hunter shot
+        static bool middleMousePressed = false;
+        if (input.isMouseButtonPressed(GLFW_MOUSE_BUTTON_MIDDLE) && !middleMousePressed) {
+            weapon->fireMonsterHunterShot();
+            middleMousePressed = true;
+        } else if (!input.isMouseButtonPressed(GLFW_MOUSE_BUTTON_MIDDLE)) {
+            middleMousePressed = false;
+        }
+        
         // R key for reload
         static bool reloadKeyPressed = false;
         if (input.isKeyPressed(GLFW_KEY_R) && !reloadKeyPressed) {
-            std::cout << "=== RELOADING WEAPON ===" << std::endl;
             weapon->reload();
             reloadKeyPressed = true;
         } else if (!input.isKeyPressed(GLFW_KEY_R)) {
             reloadKeyPressed = false;
+        }
+        
+        // H key for monster hunter shot
+        static bool monsterHunterKeyPressed = false;
+        if (input.isKeyPressed(GLFW_KEY_H) && !monsterHunterKeyPressed) {
+            weapon->fireMonsterHunterShot();
+            monsterHunterKeyPressed = true;
+        } else if (!input.isKeyPressed(GLFW_KEY_H)) {
+            monsterHunterKeyPressed = false;
         }
         
         // Handle weapon switching with number keys 1-5
@@ -252,9 +270,6 @@ void Game::update(float deltaTime) {
         
         if (input.isKeyPressed(GLFW_KEY_1) && !key1Pressed) {
             weapon->switchToWeapon(0); // Assault Rifle
-            std::cout << "=== WEAPON SWITCHED ===" << std::endl;
-            std::cout << "Current Weapon: " << weapon->getCurrentWeaponName() << " (Slot 1)" << std::endl;
-            std::cout << "=======================" << std::endl;
             key1Pressed = true;
         } else if (!input.isKeyPressed(GLFW_KEY_1)) {
             key1Pressed = false;
@@ -262,9 +277,6 @@ void Game::update(float deltaTime) {
         
         if (input.isKeyPressed(GLFW_KEY_2) && !key2Pressed) {
             weapon->switchToWeapon(1); // Sniper Rifle
-            std::cout << "=== WEAPON SWITCHED ===" << std::endl;
-            std::cout << "Current Weapon: " << weapon->getCurrentWeaponName() << " (Slot 2)" << std::endl;
-            std::cout << "=======================" << std::endl;
             key2Pressed = true;
         } else if (!input.isKeyPressed(GLFW_KEY_2)) {
             key2Pressed = false;
@@ -272,9 +284,6 @@ void Game::update(float deltaTime) {
         
         if (input.isKeyPressed(GLFW_KEY_3) && !key3Pressed) {
             weapon->switchToWeapon(2); // Submachine Gun
-            std::cout << "=== WEAPON SWITCHED ===" << std::endl;
-            std::cout << "Current Weapon: " << weapon->getCurrentWeaponName() << " (Slot 3)" << std::endl;
-            std::cout << "=======================" << std::endl;
             key3Pressed = true;
         } else if (!input.isKeyPressed(GLFW_KEY_3)) {
             key3Pressed = false;
@@ -282,9 +291,6 @@ void Game::update(float deltaTime) {
         
         if (input.isKeyPressed(GLFW_KEY_4) && !key4Pressed) {
             weapon->switchToWeapon(3); // Pistol
-            std::cout << "=== WEAPON SWITCHED ===" << std::endl;
-            std::cout << "Current Weapon: " << weapon->getCurrentWeaponName() << " (Slot 4)" << std::endl;
-            std::cout << "=======================" << std::endl;
             key4Pressed = true;
         } else if (!input.isKeyPressed(GLFW_KEY_4)) {
             key4Pressed = false;
@@ -292,9 +298,6 @@ void Game::update(float deltaTime) {
         
         if (input.isKeyPressed(GLFW_KEY_5) && !key5Pressed) {
             weapon->switchToWeapon(4); // Shotgun
-            std::cout << "=== WEAPON SWITCHED ===" << std::endl;
-            std::cout << "Current Weapon: " << weapon->getCurrentWeaponName() << " (Slot 5)" << std::endl;
-            std::cout << "=======================" << std::endl;
             key5Pressed = true;
         } else if (!input.isKeyPressed(GLFW_KEY_5)) {
             key5Pressed = false;
@@ -303,26 +306,6 @@ void Game::update(float deltaTime) {
         // T key for terrain statistics
         static bool terrainStatsKeyPressed = false;
         if (input.isKeyPressed(GLFW_KEY_T) && !terrainStatsKeyPressed) {
-            std::cout << "=== TERRAIN STATISTICS ===" << std::endl;
-            auto groundObjects = scene->getAllGameObjects();
-                            for (auto* obj : groundObjects) {
-                    if (auto* simpleGround = dynamic_cast<SimpleChunkTerrainGround*>(obj)) {
-                        const auto& params = simpleGround->getTerrainParams();
-                        std::cout << "Simple Chunk Terrain Parameters (Perlin Noise):" << std::endl;
-                        std::cout << "  Base Height: " << params.baseHeight << std::endl;
-                        std::cout << "  Amplitude: " << params.amplitude << std::endl;
-                        std::cout << "  Frequency: " << params.frequency << std::endl;
-                        std::cout << "  Octaves: " << params.octaves << std::endl;
-                        std::cout << "  Persistence: " << params.persistence << std::endl;
-                        std::cout << "  Lacunarity: " << params.lacunarity << std::endl;
-                        std::cout << "  Seed: " << params.seed << std::endl;
-                        std::cout << "  Chunk Size: " << params.chunkSize << std::endl;
-                        std::cout << "  Chunk Resolution: " << params.chunkResolution << std::endl;
-                        std::cout << "  Render Distance: " << simpleGround->getRenderDistance() << std::endl;
-                        std::cout << "  Loaded Chunks: " << simpleGround->getLoadedChunkCount() << std::endl;
-                    }
-                }
-            std::cout << "=========================" << std::endl;
             terrainStatsKeyPressed = true;
         } else if (!input.isKeyPressed(GLFW_KEY_T)) {
             terrainStatsKeyPressed = false;
@@ -331,23 +314,6 @@ void Game::update(float deltaTime) {
         // W key for water statistics
         static bool waterStatsKeyPressed = false;
         if (input.isKeyPressed(GLFW_KEY_W) && !waterStatsKeyPressed) {
-            std::cout << "=== WATER STATISTICS ===" << std::endl;
-            auto sceneObjects = scene->getAllGameObjects();
-            for (auto* obj : sceneObjects) {
-                if (auto* water = dynamic_cast<Water*>(obj)) {
-                    std::cout << "Water Surface Parameters:" << std::endl;
-                    std::cout << "  Water Height: " << water->getWaterHeight() << std::endl;
-                    std::cout << "  Wave Speed: " << water->getWaveSpeed() << std::endl;
-                    std::cout << "  Distortion Scale: " << water->getDistortionScale() << std::endl;
-                    std::cout << "  Shine Damper: " << water->getShineDamper() << std::endl;
-                    std::cout << "  Reflectivity: " << water->getReflectivity() << std::endl;
-                    std::cout << "  Position: (" << water->getPosition().x << ", " 
-                              << water->getPosition().y << ", " << water->getPosition().z << ")" << std::endl;
-                    std::cout << "  Scale: (" << water->getScale().x << ", " 
-                              << water->getScale().y << ", " << water->getScale().z << ")" << std::endl;
-                }
-            }
-            std::cout << "=======================" << std::endl;
             waterStatsKeyPressed = true;
         } else if (!input.isKeyPressed(GLFW_KEY_W)) {
             waterStatsKeyPressed = false;
@@ -450,12 +416,31 @@ void Game::render() {
         Renderer* monsterRenderer = RendererFactory::getInstance().getRenderer(RendererType::Monster);
         if (monsterRenderer) {
             const auto& activeMonsters = monsterSpawner->getActiveMonsters();
+            // Debug rendering every few seconds to avoid spam
+            static float renderDebugTimer = 0.0f;
+            renderDebugTimer += 0.016f; // Approximate frame time
+            if (renderDebugTimer > 3.0f) {
+                std::cout << "=== MONSTER RENDERING ===" << std::endl;
+                std::cout << "MonsterRenderer available: YES" << std::endl;
+                std::cout << "Active monsters count: " << activeMonsters.size() << std::endl;
+                renderDebugTimer = 0.0f;
+            }
+            
             for (const auto& monster : activeMonsters) {
                 if (monster && monster->isAlive() && monster->getActive()) {
                     monster->render(*monsterRenderer, *camera);
                 }
             }
+        } else {
+            std::cout << "=== MONSTER RENDERING ===" << std::endl;
+            std::cout << "MonsterRenderer NOT AVAILABLE!" << std::endl;
+            std::cout << "========================" << std::endl;
         }
+    }
+    
+    // Render projectiles
+    if (projectileManager) {
+        projectileManager->render(*defaultRenderer, *camera);
     }
     
     // Render AmmoUI (UI overlay)
@@ -486,7 +471,6 @@ void Game::calculateDeltaTime() {
 }
 
 void Game::cleanup() {
-    std::cout << "Cleaning up Game Engine..." << std::endl;
     
     // Clean up systems
     weapon.reset();
@@ -500,6 +484,7 @@ void Game::cleanup() {
     // Clean up renderer factory
     RendererFactory::getInstance().cleanup();
     
+    
     // Clean up GLFW
     if (window) {
         glfwDestroyWindow(window);
@@ -510,16 +495,13 @@ void Game::cleanup() {
     isInitialized = false;
     isRunning = false;
     
-    std::cout << "Game Engine cleanup complete." << std::endl;
 }
 
 void Game::setupSceneObjects() {
     if (!scene) return;
     
-    std::cout << "Setting up scene objects..." << std::endl;
     
     // Add simple terrain ground (much faster and simpler)
-    std::cout << "Creating SimpleChunkTerrainGround..." << std::endl;
     auto simpleGround = std::make_unique<SimpleChunkTerrainGround>("SimpleChunkTerrain", 200.0f, Vec3(0.4f, 0.3f, 0.2f));
     
     // Configure simple chunk terrain parameters for natural terrain with Perlin noise
@@ -533,17 +515,12 @@ void Game::setupSceneObjects() {
     terrainParams.seed = 12345;               // Random seed for terrain generation
     terrainParams.chunkSize = 16;             // 16x16 world units per chunk
     terrainParams.chunkResolution = 32;       // 32x32 vertices per chunk
-    
-    std::cout << "Setting terrain parameters..." << std::endl;
+            
     simpleGround->setTerrainParams(terrainParams);
     simpleGround->setRenderDistance(8);
-    std::cout << "Simple chunk terrain ground created with infinite terrain capability" << std::endl;
     
-    std::cout << "Initializing SimpleChunkTerrainGround..." << std::endl;
     if (!simpleGround->initialize()) {
-        std::cerr << "Failed to initialize SimpleChunkTerrainGround!" << std::endl;
     } else {
-        std::cout << "SimpleChunkTerrainGround initialized successfully!" << std::endl;
     }
     
     // Store ground reference for entity system
@@ -552,7 +529,6 @@ void Game::setupSceneObjects() {
     scene->setGroundReference(groundPtr);
     
     // Add water surface
-    std::cout << "Creating water surface..." << std::endl;
     auto waterSurface = std::make_unique<Water>("WaterSurface", -10.0f); // Water at terrain base level (-10.0f)
     waterSurface->setPosition(Vec3(0.0f, 0.0f, 0.0f)); // Position at origin, height handled by shader
     waterSurface->setScale(Vec3(1.0f, 1.0f, 1.0f)); // No scaling needed
@@ -564,9 +540,7 @@ void Game::setupSceneObjects() {
     waterSurface->setReflectivity(0.7f);      // More reflective
     
     if (!waterSurface->initialize()) {
-        std::cerr << "Failed to initialize water surface!" << std::endl;
     } else {
-        std::cout << "Water surface initialized successfully!" << std::endl;
     }
     
     scene->addGameObject(std::move(waterSurface));
@@ -603,9 +577,7 @@ void Game::setupSceneObjects() {
     Renderer* defaultRenderer = RendererFactory::getInstance().getDefaultRenderer();
     if (defaultRenderer) {
         minimap->setRenderer(defaultRenderer);
-        std::cout << "Renderer assigned to minimap" << std::endl;
     } else {
-        std::cerr << "Warning: No default renderer available for minimap" << std::endl;
     }
     
     // Store minimap reference for ground reference setup
@@ -626,7 +598,6 @@ void Game::setupSceneObjects() {
     minimap->setOrthographicScope(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 100.0f);  // This is now overridden by dynamic scope
 
     if (!minimap->initialize()) {
-        std::cerr << "Failed to initialize minimap" << std::endl;
     }
     
     // Create weapon (FPS-style weapon rendering)
@@ -634,9 +605,6 @@ void Game::setupSceneObjects() {
                                      "Resources/Objects/WeaponsPack_V.1/WeaponsPack_V.1/OBJ/AssaultRifle_01.obj",
                                      Vec3(0.8f, 0.8f, 0.8f));  // Light metallic color for better visibility
     
-    std::cout << "=== WEAPON CREATION DEBUG ===" << std::endl;
-    std::cout << "Weapon created with color: (0.8f, 0.8f, 0.8f)" << std::endl;
-    std::cout << "=================================" << std::endl;
     
     // Configure weapon properties - restore to original working position
     weapon->setWeaponScale(0.3f);  // Original scale
@@ -646,13 +614,9 @@ void Game::setupSceneObjects() {
     weapon->setDefaultRotation(Vec3(0.0f, 0.0f, 0.0f));   // Face -Z (into screen)
     weapon->setPlayerCamera(camera.get());
     
-    std::cout << "=== CALLING WEAPON INITIALIZATION ===" << std::endl;
     if (!weapon->initialize()) {
-        std::cerr << "Failed to initialize weapon" << std::endl;
     } else {
-        std::cout << "Weapon initialized successfully" << std::endl;
     }
-    std::cout << "=== WEAPON INITIALIZATION COMPLETE ===" << std::endl;
     
     // Configure weapon with recoil settings
     WeaponStats weaponStats;
@@ -671,12 +635,10 @@ void Game::setupSceneObjects() {
     weaponStats.projectileConfig.damage = 25.0f;
     
     weapon->configureShooting(weaponStats);
-    std::cout << "Weapon configured with recoil settings" << std::endl;
     
     // Set up projectile manager for weapon shooting system
     if (projectileManager && weapon) {
         weapon->setProjectileManager(projectileManager.get());
-        std::cout << "Projectile manager connected to weapon shooting system" << std::endl;
     }
     
     // Connect crosshair and camera to weapon recoil system
@@ -690,7 +652,6 @@ void Game::setupSceneObjects() {
             
             // Apply recoil to camera using new recoil system
             if (this->camera) {
-                std::cout << "=== APPLYING CAMERA RECOIL ===" << std::endl;
                 this->camera->applyRecoil(recoil);
             }
         });
@@ -707,12 +668,10 @@ void Game::setupSceneObjects() {
                 
                 // Apply recoil to camera using new recoil system
                 if (this->camera) {
-                    std::cout << "=== APPLYING CAMERA RECOIL (SHOOTING) ===" << std::endl;
                     this->camera->applyRecoil(recoil);
                 }
             });
         }
-        std::cout << "Crosshair and camera recoil callbacks connected to weapon and shooting system" << std::endl;
     }
     
     // Create and initialize AmmoUI
@@ -730,27 +689,21 @@ void Game::setupSceneObjects() {
     // Connect AmmoUI to weapon
     if (weapon) {
         ammoUI->setWeapon(weapon.get());
-        std::cout << "AmmoUI connected to weapon" << std::endl;
     }
     
     // Initialize AmmoUI
     if (!ammoUI->initialize()) {
-        std::cerr << "Failed to initialize AmmoUI" << std::endl;
     } else {
-        std::cout << "AmmoUI initialized successfully" << std::endl;
     }
     
     // Initialize monster spawner
-    monsterSpawner = std::make_unique<MonsterSpawner>();
-    monsterSpawner->initialize(scene.get(), weapon.get());
-    std::cout << "MonsterSpawner initialized successfully" << std::endl;
+    monsterSpawner = std::make_unique<MonsterSpawner>(scene.get(), weapon.get());
     
     // TEMPORARILY DISABLED: Adding weapon to scene has ownership issues
     // std::cout << "=== ADDING WEAPON TO SCENE FOR TESTING ===" << std::endl;
     // scene->addGameObject(weapon.get());
     // std::cout << "=== WEAPON ADDED TO SCENE ===" << std::endl;
     
-    std::cout << "Scene objects setup complete!" << std::endl;
     scene->printSceneInfo();
 }
 
@@ -782,40 +735,10 @@ void Game::toggleFullscreen() {
     // Update all renderers with new dimensions
     RendererFactory::getInstance().setViewport(windowWidth, windowHeight);
     
-    std::cout << "Fullscreen " << (isFullscreen ? "enabled" : "disabled") 
-              << " - Resolution: " << windowWidth << "x" << windowHeight 
-              << " (Aspect: " << getAspectRatio() << ")" << std::endl;
 }
 
 void Game::printControls() {
-    std::cout << "\n=== 3D Scene with Ground Plane, Water, and First-Person Camera (Counter-Strike Style) ===" << std::endl;
-    std::cout << "WASD - Move forward/backward and strafe left/right on ground" << std::endl;
-    std::cout << "Mouse - Look around (first-person view)" << std::endl;
-    std::cout << "Space/Shift - Jump up/crouch down from ground level" << std::endl;
-    std::cout << "F9 - Toggle fullscreen mode" << std::endl;
-    std::cout << "ESC - Exit" << std::endl;
-    std::cout << "\n=== WEAPON SWITCHING ===" << std::endl;
-    std::cout << "1 - Assault Rifle" << std::endl;
-    std::cout << "2 - Sniper Rifle" << std::endl;
-    std::cout << "3 - Submachine Gun" << std::endl;
-    std::cout << "4 - Pistol" << std::endl;
-    std::cout << "5 - Shotgun" << std::endl;
-    std::cout << "\n=== SHOOTING CONTROLS ===" << std::endl;
-    std::cout << "Left Mouse Button - Start/Stop firing" << std::endl;
-    std::cout << "Right Mouse Button - Single shot" << std::endl;
-    std::cout << "R - Reload weapon" << std::endl;
-    std::cout << "\n=== DEBUG CONTROLS ===" << std::endl;
-    std::cout << "T - Show terrain statistics" << std::endl;
-    std::cout << "W - Show water statistics" << std::endl;
-    std::cout << "\nFeatures:" << std::endl;
-    std::cout << "- Crosshair for aiming" << std::endl;
-    std::cout << "- 5 different weapon models with unique properties" << std::endl;
-    std::cout << "- Modular shooting system with projectile physics" << std::endl;
-    std::cout << "- Realistic water rendering with reflection and refraction" << std::endl;
-    std::cout << "- Wave animation and distortion effects" << std::endl;
-    std::cout << "- Larger window (1200x800) with fullscreen support" << std::endl;
-    std::cout << "- Dynamic window resizing with proper aspect ratio handling" << std::endl;
-    std::cout << "==================================================================================\n" << std::endl;
+    // Controls information removed to eliminate console output
 }
 
 void Game::onWindowResize(int width, int height) {
@@ -826,13 +749,10 @@ void Game::onWindowResize(int width, int height) {
     // Update all renderers with new dimensions
     RendererFactory::getInstance().setViewport(width, height);
     
-    std::cout << "Window resized to: " << width << "x" << height << " (Aspect ratio: " 
-              << static_cast<float>(width) / static_cast<float>(height) << ")" << std::endl;
     
     // Additional debugging information
     Renderer* defaultRenderer = RendererFactory::getInstance().getDefaultRenderer();
     if (defaultRenderer) {
-        std::cout << "  Renderer aspect ratio: " << defaultRenderer->getAspectRatio() << std::endl;
     }
 }
 
@@ -849,9 +769,7 @@ void Game::windowIconifyCallback(GLFWwindow* window, int iconified) {
     Game* game = static_cast<Game*>(glfwGetWindowUserPointer(window));
     if (game) {
         if (iconified) {
-            std::cout << "Window minimized" << std::endl;
         } else {
-            std::cout << "Window restored" << std::endl;
             // Get current window size and update
             int width, height;
             glfwGetFramebufferSize(window, &width, &height);

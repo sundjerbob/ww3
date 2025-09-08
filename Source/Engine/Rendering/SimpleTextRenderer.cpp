@@ -29,7 +29,6 @@ bool SimpleTextRenderer::initialize(int width, int height) {
     
     // Load text shader
     if (!loadTextShader()) {
-        std::cerr << "Failed to load text shader" << std::endl;
         return false;
     }
     
@@ -38,13 +37,11 @@ bool SimpleTextRenderer::initialize(int width, int height) {
     
     // Create simple font texture
     if (!createSimpleFontTexture()) {
-        std::cerr << "Failed to create font texture" << std::endl;
         return false;
     }
     fontLoaded = true;
     
     isInitialized = true;
-    std::cout << "SimpleTextRenderer initialized successfully" << std::endl;
     return true;
 }
 
@@ -61,7 +58,6 @@ void SimpleTextRenderer::cleanup() {
     textShader.reset();
     isInitialized = false;
     
-    std::cout << "SimpleTextRenderer cleanup complete" << std::endl;
 }
 
 bool SimpleTextRenderer::loadTextShader() {
@@ -70,14 +66,12 @@ bool SimpleTextRenderer::loadTextShader() {
     
     // Check if shader loaded properly
     if (!textShader) {
-        std::cerr << "Failed to create text shader" << std::endl;
         return false;
     }
     
     // Try to use the shader to check if it's valid
     textShader->use();
     if (glGetError() != GL_NO_ERROR) {
-        std::cerr << "Failed to use text shader - OpenGL error" << std::endl;
         return false;
     }
     
@@ -269,8 +263,8 @@ void SimpleTextRenderer::renderCharacter(char c, float x, float y, float scale, 
     
     float u0 = charX / static_cast<float>(TEXTURE_WIDTH);
     float v0 = charY / static_cast<float>(TEXTURE_HEIGHT);
-    float u1 = (charX + CHAR_WIDTH) / static_cast<float>(TEXTURE_WIDTH);
-    float v1 = (charY + CHAR_HEIGHT) / static_cast<float>(TEXTURE_HEIGHT);
+    float u1 = (charX + static_cast<float>(CHAR_WIDTH)) / static_cast<float>(TEXTURE_WIDTH);
+    float v1 = (charY + static_cast<float>(CHAR_HEIGHT)) / static_cast<float>(TEXTURE_HEIGHT);
     
     float w = CHAR_WIDTH * scale;
     float h = CHAR_HEIGHT * scale;

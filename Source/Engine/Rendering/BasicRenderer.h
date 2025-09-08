@@ -18,6 +18,8 @@ private:
 
     // Shader used for world objects
     std::unique_ptr<Shader> objectShader;
+    // Shader used for terrain (with normals support)
+    std::unique_ptr<Shader> terrainShader;
     bool isInitialized;
 
 public:
@@ -53,10 +55,13 @@ public:
     
     // Get shader for custom rendering
     Shader* getShader() const { return objectShader.get(); }
+    // Get terrain shader for terrain rendering
+    Shader* getTerrainShader() const { return terrainShader.get(); }
 
 private:
     bool initializeOpenGL();
     bool loadObjectShader();
+    bool loadTerrainShader();
     void updateProjectionMatrix();
 };
 

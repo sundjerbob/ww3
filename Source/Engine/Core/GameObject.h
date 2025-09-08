@@ -60,6 +60,9 @@ protected:
     // Update timing
     float lastUpdateTime;
     
+    // Scene reference
+    class Scene* owningScene;
+    
 public:
     // Constructor/Destructor
     GameObject(const std::string& objectName = "GameObject");
@@ -116,6 +119,10 @@ public:
     void setRenderer(Renderer* renderer) { objectRenderer = renderer; }
     Renderer* getRenderer() const { return objectRenderer; }
     const Mesh* getMesh() const { return mesh.get(); }
+    
+    // Scene reference
+    void setScene(class Scene* scene) { owningScene = scene; }
+    class Scene* getScene() const { return owningScene; }
     
     // Renderer selection - derived classes can override to choose their renderer
     virtual RendererType getPreferredRendererType() const { return RendererType::Basic; }

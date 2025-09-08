@@ -19,12 +19,14 @@ bool BasicRenderer::initialize(int width, int height) {
     windowHeight = height;
 
     if (!initializeOpenGL()) {
-        std::cerr << "Failed to initialize OpenGL" << std::endl;
         return false;
     }
 
     if (!loadObjectShader()) {
-        std::cerr << "Failed to load object shader" << std::endl;
+        return false;
+    }
+
+    if (!loadTerrainShader()) {
         return false;
     }
 
@@ -46,6 +48,11 @@ bool BasicRenderer::loadObjectShader() {
     return objectShader->loadFromFiles("Resources/Shaders/vertex.glsl", "Resources/Shaders/fragment.glsl");
 }
 
+bool BasicRenderer::loadTerrainShader() {
+    terrainShader = std::make_unique<Shader>();
+    return terrainShader->loadFromFiles("Resources/Shaders/terrain_vertex.glsl", "Resources/Shaders/terrain_fragment.glsl");
+}
+
 void BasicRenderer::updateProjectionMatrix() {
     const float aspect = static_cast<float>(windowWidth) / static_cast<float>(windowHeight);
     const float fov = 45.0f * 3.14159f / 180.0f;
@@ -56,6 +63,7 @@ void BasicRenderer::updateProjectionMatrix() {
 
 void BasicRenderer::cleanup() {
     objectShader.reset();
+    terrainShader.reset();
     isInitialized = false;
 }
 
@@ -92,25 +100,30 @@ void BasicRenderer::renderMesh(const Mesh& mesh,
                                const Camera& camera,
                                const Vec3& color,
                                bool useHeightColoring) const {
-    if (!isInitialized || !objectShader) return;
-    objectShader->use();
+    if (!isInitialized) return;
+    
+    // Use terrain shader for height-based coloring, object shader for regular objects
+    Shader* shader = useHeightColoring ? terrainShader.get() : objectShader.get();
+    if (!shader) return;
+    
+    shader->use();
     
     // Set coloring mode based on parameter
-    objectShader->setInt("useHeightColoring", useHeightColoring ? 1 : 0);
+    shader->setInt("useHeightColoring", useHeightColoring ? 1 : 0);
 
-    objectShader->setMat4("model", modelMatrix);
-    objectShader->setMat4("view", camera.getViewMatrix());
-    objectShader->setMat4("projection", camera.getProjectionMatrix());
-    objectShader->setVec3("color", color);
+    shader->setMat4("model", modelMatrix);
+    shader->setMat4("view", camera.getViewMatrix());
+    shader->setMat4("projection", camera.getProjectionMatrix());
+    shader->setVec3("color", color);
     
     // Set lighting uniforms for terrain
     if (useHeightColoring) {
         // Directional light from the sun (slightly above and to the side)
-        objectShader->setVec3("lightDirection", Vec3(0.5f, 0.8f, 0.3f));
-        objectShader->setVec3("lightColor", Vec3(1.0f, 0.95f, 0.8f)); // Warm sunlight
-        objectShader->setVec3("ambientColor", Vec3(0.3f, 0.3f, 0.4f)); // Blue-ish ambient
-        objectShader->setFloat("ambientStrength", 0.3f);
-        objectShader->setFloat("diffuseStrength", 0.7f);
+        shader->setVec3("lightDirection", Vec3(0.5f, 0.8f, 0.3f));
+        shader->setVec3("lightColor", Vec3(1.0f, 0.95f, 0.8f)); // Warm sunlight
+        shader->setVec3("ambientColor", Vec3(0.3f, 0.3f, 0.4f)); // Blue-ish ambient
+        shader->setFloat("ambientStrength", 0.3f);
+        shader->setFloat("diffuseStrength", 0.7f);
     }
     
     mesh.render();

@@ -23,6 +23,7 @@
 #include <vector>
 #include <string>
 #include <functional>
+#include <iostream>
 
 namespace Engine {
 
@@ -178,7 +179,7 @@ public:
     const ProjectileConfig& getConfig() const { return config; }
     
     // State queries
-    bool isActive() const { return !isDestroyed && currentLifetime < config.lifetime; }
+    bool isActive() const { return GameObject::getActive() && !isDestroyed; }
     float getDistanceTraveled() const { return distanceTraveled; }
     float getLifetime() const { return currentLifetime; }
     const Vec3& getVelocity() const { return velocity; }
@@ -233,7 +234,7 @@ protected:
     bool shouldDestroy() const;
     void performExplosion(const Vec3& position);
     void renderTrail(const Renderer& renderer, const Camera& camera);
-    void setupProjectileMesh();
+    void setupMesh() override;
 };
 
 /**
@@ -273,6 +274,7 @@ public:
     void cleanup();
     
     Projectile* createProjectile(const ProjectileConfig& config, const std::string& name = "");
+    Projectile* createMonsterHunterProjectile(const std::string& name = "");
     void destroyProjectile(Projectile* projectile);
     void destroyAllProjectiles();
     

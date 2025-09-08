@@ -45,9 +45,6 @@ Weapon::Weapon(const std::string& name, const std::string& modelPath, const Vec3
       currentWeaponIndex(0),
       shootingEnabled(false) {
     
-    std::cout << "=== WEAPON CONSTRUCTOR START ===" << std::endl;
-    std::cout << "Creating weapon: " << name << std::endl;
-    std::cout << "Model path: " << modelPath << std::endl;
     
     // Set weapon to render in 2D screen space (not as 3D entity)
     setEntity(false);
@@ -62,59 +59,41 @@ Weapon::Weapon(const std::string& name, const std::string& modelPath, const Vec3
     // Initialize weapon inventory
     initializeWeaponInventory();
     
-    std::cout << "=== WEAPON CONSTRUCTOR END ===" << std::endl;
 }
 
 bool Weapon::initialize() {
-    std::cout << "=== WEAPON INITIALIZATION START ===" << std::endl;
-    std::cout << "Initializing Weapon: " << getName() << std::endl;
-    std::cout << "Weapon model path: " << weaponModelPath << std::endl;
     
     if (!GameObject::initialize()) {
-        std::cerr << "Failed to initialize Weapon base class" << std::endl;
         return false;
     }
     
     // Load weapon model if path is provided
     if (!weaponModelPath.empty()) {
-        std::cout << "=== WEAPON MODEL LOADING ATTEMPT ===" << std::endl;
-        std::cout << "Attempting to load weapon model from: " << weaponModelPath << std::endl;
         if (!loadWeaponModel(weaponModelPath)) {
-            std::cerr << "Failed to load weapon model: " << weaponModelPath << std::endl;
-            std::cout << "Falling back to placeholder mesh" << std::endl;
             // Fall back to placeholder mesh instead of failing
             setupMesh();
         } else {
-            std::cout << "Weapon model loaded successfully!" << std::endl;
         }
-        std::cout << "=== WEAPON MODEL LOADING COMPLETE ===" << std::endl;
     } else {
-        std::cout << "No weapon model path provided, using placeholder mesh" << std::endl;
         setupMesh();
     }
     
     // Setup default weapon mesh if no model loaded
     if (!mesh || !mesh->isValid()) {
-        std::cout << "No valid mesh found, setting up placeholder mesh" << std::endl;
         setupMesh();
     }
     
     // Initialize shooting system
     initializeShootingSystem();
     
-    std::cout << "Weapon initialized successfully" << std::endl;
-    std::cout << "=== WEAPON INITIALIZATION END ===" << std::endl;
     return true;
 }
 
 bool Weapon::loadWeaponModel(const std::string& modelPath) {
-    std::cout << "=== LOADING WEAPON MODEL ===" << std::endl;
-    std::cout << "Model path: " << modelPath << std::endl;
     
     // Check if file exists
     std::ifstream file(modelPath);
     if (!file.good()) {
-        std::cerr << "ERROR: Weapon model file does not exist: " << modelPath << std::endl;
         return false;
     }
     file.close();
@@ -125,26 +104,17 @@ bool Weapon::loadWeaponModel(const std::string& modelPath) {
         std::streamsize fileSize = sizeCheck.tellg();
         sizeCheck.close();
         if (fileSize < 100) { // Very small file, likely empty or corrupted
-            std::cerr << "ERROR: Weapon model file appears to be empty or corrupted (size: " << fileSize << " bytes)" << std::endl;
             return false;
         }
-        std::cout << "File size: " << fileSize << " bytes" << std::endl;
     }
     
     // Load OBJ data
-    std::cout << "Loading OBJ data..." << std::endl;
     OBJMeshData objData = OBJLoader::loadOBJ(modelPath, weaponScale);
     
     if (!objData.isValid()) {
-        std::cerr << "ERROR: Failed to load OBJ data from: " << modelPath << std::endl;
-        std::cerr << "OBJ data validation failed - using placeholder mesh" << std::endl;
         return false;
     }
     
-    std::cout << "OBJ data loaded successfully:" << std::endl;
-    std::cout << "  Vertices: " << objData.vertexCount << std::endl;
-    std::cout << "  Triangles: " << objData.triangleCount << std::endl;
-    std::cout << "  Materials: " << objData.materials.getMaterialCount() << std::endl;
     
     // Create mesh from OBJ data
     mesh = std::make_unique<Mesh>();
@@ -165,30 +135,24 @@ bool Weapon::loadWeaponModel(const std::string& modelPath) {
         interleavedData.push_back(objData.vertices[i + 7]); // tex.v
     }
     
-    std::cout << "Created interleaved data with " << interleavedData.size() / 5 << " vertices" << std::endl;
     
     // Create mesh with interleaved position and texture coordinate data
     if (!mesh->createMeshWithTexCoords(interleavedData, objData.indices)) {
-        std::cerr << "ERROR: Failed to create weapon mesh from OBJ data" << std::endl;
         return false;
     }
     
     // Store materials for multi-color rendering
     weaponMaterials = objData.materials;
-    std::cout << "Loaded " << weaponMaterials.getMaterialCount() << " materials for weapon" << std::endl;
     
     // Print all available materials with their colors
     for (const auto& materialName : weaponMaterials.getMaterialNames()) {
         const Material* mat = weaponMaterials.getMaterial(materialName);
         if (mat) {
-            std::cout << "  Material '" << mat->name << "': RGB(" 
-                      << mat->diffuse.x << ", " << mat->diffuse.y << ", " << mat->diffuse.z << ")" << std::endl;
         }
     }
     
     // Create material groups for multi-material rendering
             createMaterialGroups(objData);
-        std::cout << "Created " << materialGroups.size() << " material groups for weapon" << std::endl;
     
     // Calculate and apply weapon-specific transformations
     // Center the weapon and apply proper orientation
@@ -205,13 +169,6 @@ bool Weapon::loadWeaponModel(const std::string& modelPath) {
     isLoaded = true;
     weaponModelPath = modelPath;
     
-    std::cout << "Weapon model loaded successfully:" << std::endl;
-    std::cout << "  Vertices: " << objData.vertexCount << std::endl;
-    std::cout << "  Triangles: " << objData.triangleCount << std::endl;
-    std::cout << "  Bounding box: (" << objData.boundingBoxMin.x << ", " << objData.boundingBoxMin.y << ", " << objData.boundingBoxMin.z 
-              << ") to (" << objData.boundingBoxMax.x << ", " << objData.boundingBoxMax.y << ", " << objData.boundingBoxMax.z << ")" << std::endl;
-    std::cout << "  Center: (" << objData.center.x << ", " << objData.center.y << ", " << objData.center.z << ")" << std::endl;
-    std::cout << "=== WEAPON MODEL LOADING COMPLETE ===" << std::endl;
     
     return true;
 }
@@ -223,11 +180,6 @@ void Weapon::update(float deltaTime) {
     static int debugCount = 0;
     debugCount++;
     if (debugCount % 300 == 0) { // Print every 5 seconds at 60fps
-        std::cout << "Weapon update debug:" << std::endl;
-        std::cout << "  isVisible: " << (isVisible ? "true" : "false") << std::endl;
-        std::cout << "  isLoaded: " << (isLoaded ? "true" : "false") << std::endl;
-        std::cout << "  mesh valid: " << (mesh && mesh->isValid() ? "true" : "false") << std::endl;
-        std::cout << "  weaponModelPath: '" << weaponModelPath << "'" << std::endl;
     }
     
     if (!isVisible || !isLoaded) return;
@@ -236,16 +188,12 @@ void Weapon::update(float deltaTime) {
     if (!mesh || !mesh->isValid() || weaponModelPath.empty()) {
         static bool modelLoadAttempted = false;
         if (!modelLoadAttempted) {
-            std::cout << "Forcing weapon model loading in update..." << std::endl;
             if (!weaponModelPath.empty()) {
                 if (loadWeaponModel(weaponModelPath)) {
-                    std::cout << "Weapon model loaded successfully in update" << std::endl;
                 } else {
-                    std::cout << "Failed to load weapon model in update, using placeholder" << std::endl;
                     setupMesh();
                 }
             } else {
-                std::cout << "No weapon model path set, using placeholder" << std::endl;
                 setupMesh();
             }
             modelLoadAttempted = true;
@@ -280,10 +228,6 @@ void Weapon::render(const Renderer& renderer, const Camera& camera) {
     static int renderCount = 0;
     renderCount++;
     if (renderCount % 300 == 0) { // Print every 5 seconds at 60fps
-        std::cout << "=== WEAPON RENDER CALLED ===" << std::endl;
-        std::cout << "  isVisible: " << (isVisible ? "true" : "false") << std::endl;
-        std::cout << "  mesh valid: " << (mesh && mesh->isValid() ? "true" : "false") << std::endl;
-        std::cout << "  materialGroups: " << materialGroups.size() << std::endl;
     }
     
     if (!isVisible || !mesh || !mesh->isValid()) {
@@ -356,10 +300,8 @@ void Weapon::setupMesh() {
     
     mesh = std::make_unique<Mesh>();
     if (!mesh->createMesh(vertices, indices)) {
-        std::cerr << "Failed to create placeholder weapon mesh" << std::endl;
     }
     
-    std::cout << "Placeholder weapon mesh created" << std::endl;
 }
 
 void Weapon::updateWeaponPosition() {
@@ -371,11 +313,6 @@ void Weapon::updateWeaponPosition() {
     static int debugCount = 0;
     debugCount++;
     if (debugCount % 300 == 0) { // Print every 5 seconds at 60fps
-        std::cout << "Weapon position debug:" << std::endl;
-        std::cout << "  Screen position: (" << screenPosition.x << ", " << screenPosition.y << ", " << screenPosition.z << ")" << std::endl;
-        std::cout << "  Weapon offset: (" << weaponOffset.x << ", " << weaponOffset.y << ", " << weaponOffset.z << ")" << std::endl;
-        std::cout << "  Recoil offset: (" << recoilOffset.x << ", " << recoilOffset.y << ", " << recoilOffset.z << ")" << std::endl;
-        std::cout << "  Final position: (" << finalPosition.x << ", " << finalPosition.y << ", " << finalPosition.z << ")" << std::endl;
     }
 }
 
@@ -415,11 +352,6 @@ void Weapon::updateWeaponRotation() {
     static int debugCount = 0;
     debugCount++;
     if (debugCount % 300 == 0) { // Print every 5 seconds at 60fps
-        std::cout << "Weapon rotation debug:" << std::endl;
-        std::cout << "  Default rotation: (" << defaultRotation.x << ", " << defaultRotation.y << ", " << defaultRotation.z << ")" << std::endl;
-        std::cout << "  Camera rotation: (" << cameraRotation.x << ", " << cameraRotation.y << ", " << cameraRotation.z << ")" << std::endl;
-        std::cout << "  Recoil rotation: (" << recoilRotation.x << ", " << recoilRotation.y << ", " << recoilRotation.z << ")" << std::endl;
-        std::cout << "  Final rotation: (" << weaponRotation.x << ", " << weaponRotation.y << ", " << weaponRotation.z << ")" << std::endl;
     }
 }
 
@@ -475,11 +407,6 @@ Mat4 Weapon::createWeaponTransformMatrix() const {
     static int debugCount = 0;
     debugCount++;
     if (debugCount % 300 == 0) { // Print every 5 seconds at 60fps
-        std::cout << "Weapon transform matrix debug:" << std::endl;
-        std::cout << "  Weapon position (with recoil): (" << weaponPos.x << ", " << weaponPos.y << ", " << weaponPos.z << ")" << std::endl;
-        std::cout << "  View space position: (" << viewSpacePos.x << ", " << viewSpacePos.y << ", " << viewSpacePos.z << ")" << std::endl;
-        std::cout << "  Rotation: (" << rotation.x << ", " << rotation.y << ", " << rotation.z << ")" << std::endl;
-        std::cout << "  Scale: (" << scale.x << ", " << scale.y << ", " << scale.z << ")" << std::endl;
     }
     
     return modelMatrix;
@@ -488,7 +415,6 @@ Mat4 Weapon::createWeaponTransformMatrix() const {
 void Weapon::createMaterialGroups(const OBJMeshData& objData) {
     // Implementation for creating material groups from OBJ data
     // Parse the OBJ data and create material groups based on material assignments
-    std::cout << "Creating material groups from OBJ data..." << std::endl;
     
     // Clear existing material groups
     materialGroups.clear();
@@ -532,7 +458,7 @@ void Weapon::createMaterialGroups(const OBJMeshData& objData) {
                 group.indices = materialIndexMap[materialName];
                 
                 materialGroups.push_back(group);
-                std::cout << "  Created material group '" << materialName << "' with color RGB(" 
+                std::cout << "Created material group '" << materialName << "' with color ("
                           << mat->diffuse.x << ", " << mat->diffuse.y << ", " << mat->diffuse.z 
                           << ") and " << group.indices.size() / 3 << " triangles" << std::endl;
             }
@@ -549,10 +475,8 @@ void Weapon::createMaterialGroups(const OBJMeshData& objData) {
         }
         
         materialGroups.push_back(defaultGroup);
-        std::cout << "  Created default material group with weapon color" << std::endl;
     }
     
-    std::cout << "Created " << materialGroups.size() << " material groups" << std::endl;
 }
 
 // Weapon switching implementation
@@ -703,15 +627,12 @@ void Weapon::initializeWeaponInventory() {
     // Set initial weapon
     currentWeaponIndex = 0;
     
-    std::cout << "Weapon inventory initialized with " << weaponInventory.size() << " weapons" << std::endl;
     for (size_t i = 0; i < weaponInventory.size(); i++) {
-        std::cout << "  " << (i + 1) << ". " << weaponInventory[i].name << std::endl;
     }
 }
 
 bool Weapon::switchToWeapon(int weaponIndex) {
     if (weaponIndex < 0 || weaponIndex >= static_cast<int>(weaponInventory.size())) {
-        std::cerr << "Invalid weapon index: " << weaponIndex << std::endl;
         return false;
     }
     
@@ -719,9 +640,6 @@ bool Weapon::switchToWeapon(int weaponIndex) {
         return true; // Already using this weapon
     }
     
-    std::cout << "=== SWITCHING TO WEAPON " << (weaponIndex + 1) << " ===" << std::endl;
-    std::cout << "Weapon name: " << weaponInventory[weaponIndex].name << std::endl;
-    std::cout << "Model path: " << weaponInventory[weaponIndex].modelPath << std::endl;
     
     // Update weapon properties
     const WeaponData& newWeapon = weaponInventory[weaponIndex];
@@ -735,34 +653,23 @@ bool Weapon::switchToWeapon(int weaponIndex) {
     // Configure shooting stats for the new weapon
     if (shootingEnabled) {
         configureShooting(newWeapon.shootingStats);
-        std::cout << "Configured shooting stats for " << newWeapon.name << std::endl;
-        std::cout << "  Fire mode: " << (int)newWeapon.shootingStats.fireMode << std::endl;
-        std::cout << "  Fire rate: " << newWeapon.shootingStats.fireRate << " shots/sec" << std::endl;
-        std::cout << "  Ammo: " << newWeapon.shootingStats.currentAmmo << "/" << newWeapon.shootingStats.maxAmmo << std::endl;
-        std::cout << "  Reserve: " << newWeapon.shootingStats.currentReserveAmmo << "/" << newWeapon.shootingStats.maxReserveAmmo << std::endl;
     }
     
     // Load the new weapon model
-    std::cout << "Attempting to load weapon model..." << std::endl;
     bool modelLoaded = false;
     
     if (!loadWeaponModel(newWeapon.modelPath)) {
-        std::cerr << "Failed to load weapon model: " << newWeapon.modelPath << std::endl;
         
         // Special fallback for shotgun (weapon 5)
         if (weaponIndex == 4 && newWeapon.name == "Shotgun") {
-            std::cout << "Trying fallback shotgun model (Shotgun_03)..." << std::endl;
             std::string fallbackPath = "Resources/Objects/WeaponsPack_V.1/WeaponsPack_V.1/OBJ/Shotgun_03.obj";
             if (loadWeaponModel(fallbackPath)) {
-                std::cout << "Successfully loaded fallback shotgun model!" << std::endl;
                 modelLoaded = true;
             } else {
-                std::cerr << "Failed to load fallback shotgun model as well" << std::endl;
             }
         }
         
         if (!modelLoaded) {
-            std::cout << "Falling back to placeholder mesh..." << std::endl;
             setupMesh(); // Fall back to placeholder mesh
         }
     } else {
@@ -775,8 +682,6 @@ bool Weapon::switchToWeapon(int weaponIndex) {
     updateWeaponPosition();
     updateWeaponRotation();
     
-    std::cout << "Successfully switched to " << newWeapon.name << std::endl;
-    std::cout << "=================================" << std::endl;
     return true;
 }
 
@@ -787,7 +692,6 @@ bool Weapon::switchToWeapon(const std::string& weaponName) {
         }
     }
     
-    std::cerr << "Weapon not found: " << weaponName << std::endl;
     return false;
 }
 
@@ -832,12 +736,10 @@ void Weapon::initializeShootingSystem() {
         shootingSystem->setRecoilCallback([this](const Vec3& recoil) {
             this->applyRecoil(recoil);
         });
-        std::cout << "Recoil callback connected to weapon" << std::endl;
     }
     
     shootingEnabled = true;
     
-    std::cout << "Shooting system initialized for weapon: " << getName() << std::endl;
 }
 
 void Weapon::setProjectileManager(ProjectileManager* manager) {
@@ -868,6 +770,12 @@ void Weapon::stopFiring() {
 void Weapon::fireSingleShot() {
     if (shootingEnabled) {
         shootingComponent.fireSingleShot();
+    }
+}
+
+void Weapon::fireMonsterHunterShot() {
+    if (shootingEnabled) {
+        shootingComponent.fireMonsterHunterShot();
     }
 }
 
@@ -958,9 +866,6 @@ void Weapon::applyRecoil(const Vec3& recoil) {
         onRecoilApplied(recoil);
     }
     
-    std::cout << "=== WEAPON RECOIL APPLIED ===" << std::endl;
-    std::cout << "Position Recoil: (" << recoilOffset.x << ", " << recoilOffset.y << ", " << recoilOffset.z << ")" << std::endl;
-    std::cout << "Rotation Recoil: (" << recoilRotation.x << ", " << recoilRotation.y << ", " << recoilRotation.z << ")" << std::endl;
 }
 
 void Weapon::updateRecoil(float deltaTime) {
@@ -980,6 +885,53 @@ void Weapon::updateRecoil(float deltaTime) {
     // Update velocities for smooth movement - stronger damping for faster return
     recoilVelocity.y *= (1.0f - deltaTime * 10.0f); // Much stronger position velocity damping
     recoilRotationVelocity.x *= (1.0f - deltaTime * 8.0f); // Much stronger rotation velocity damping
+}
+
+Vec3 Weapon::getWorldPosition() const {
+    if (!playerCamera) {
+        // std::cout << "WARNING: No player camera available for weapon world position!" << std::endl;
+        return Vec3(0.0f, 0.0f, 0.0f);
+    }
+    
+    // Get camera position and direction vectors
+    Vec3 cameraPos = playerCamera->getPosition();
+    Vec3 cameraForward = playerCamera->getForward();
+    Vec3 cameraRight = playerCamera->getRight();
+    Vec3 cameraUp = playerCamera->getUpVector();
+    
+    // Get weapon's screen position (in NDC-like coordinates)
+    Vec3 weaponScreenPos = getPosition(); // This includes screenPosition + weaponOffset + recoilOffset
+    
+    // Convert weapon screen position to world coordinates
+    // The weapon is positioned in view space, so we need to transform it to world space
+    // Weapon screen position is relative to camera view
+    
+    // Calculate weapon world position based on screen position
+    // Scale factors to convert from screen space to world space
+    const float horizontalScale = 0.8f;  // How far left/right the weapon can be
+    const float verticalScale = 0.6f;    // How far up/down the weapon can be
+    const float forwardOffset = 0.3f;    // How far forward the weapon is from camera
+    
+    Vec3 weaponWorldPos = cameraPos + 
+                         cameraRight * weaponScreenPos.x * horizontalScale +  // Horizontal offset
+                         cameraUp * weaponScreenPos.y * verticalScale +       // Vertical offset  
+                         cameraForward * (forwardOffset + weaponScreenPos.z);  // Forward offset
+    
+    // Adjust position to be more precisely at the gun barrel
+    // Move forward along the weapon's forward direction to get to the barrel tip
+    const float barrelLength = 0.4f;  // Approximate barrel length
+    Vec3 weaponForward = calculateAimDirection();  // Get weapon's aim direction
+    Vec3 barrelTipPos = weaponWorldPos + weaponForward * barrelLength;
+    
+    // Debug output (disabled for now)
+    // std::cout << "=== WEAPON WORLD POSITION ===" << std::endl;
+    // std::cout << "Camera position: (" << cameraPos.x << ", " << cameraPos.y << ", " << cameraPos.z << ")" << std::endl;
+    // std::cout << "Weapon screen position: (" << weaponScreenPos.x << ", " << weaponScreenPos.y << ", " << weaponScreenPos.z << ")" << std::endl;
+    // std::cout << "Weapon world position: (" << weaponWorldPos.x << ", " << weaponWorldPos.y << ", " << weaponWorldPos.z << ")" << std::endl;
+    // std::cout << "Barrel tip position: (" << barrelTipPos.x << ", " << barrelTipPos.y << ", " << barrelTipPos.z << ")" << std::endl;
+    // std::cout << "=============================" << std::endl;
+    
+    return barrelTipPos;
 }
 
 } // namespace Engine

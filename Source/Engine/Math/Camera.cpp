@@ -108,6 +108,12 @@ void Camera::rotate(float yawOffset, float pitchOffset) {
     if (pitch > maxPitch) pitch = maxPitch;
     if (pitch < -maxPitch) pitch = -maxPitch;
     
+    // Normalize yaw to prevent angle boundary issues
+    // Keep yaw in the range [-π, π] to avoid discontinuities
+    const float twoPi = 2.0f * 3.14159f;
+    while (yaw > 3.14159f) yaw -= twoPi;
+    while (yaw < -3.14159f) yaw += twoPi;
+    
     // Update camera direction vectors when view angles change
     updateCameraVectors();
 }
@@ -127,6 +133,12 @@ void Camera::setRotation(const Vec3& rot) {
     if (rot.x == -90.0f) {
         pitch = -90.0f * 3.14159f / 180.0f;
     }
+    
+    // Normalize yaw to prevent angle boundary issues
+    // Keep yaw in the range [-π, π] to avoid discontinuities
+    const float twoPi = 2.0f * 3.14159f;
+    while (yaw > 3.14159f) yaw -= twoPi;
+    while (yaw < -3.14159f) yaw += twoPi;
     
     updateCameraVectors();
 }
@@ -163,10 +175,6 @@ void Camera::applyRecoil(const Vec3& recoil) {
     Vec3 finalRotation = baseRotation + recoilRotation;
     setRotation(finalRotation);
     
-    std::cout << "=== CAMERA RECOIL APPLIED ===" << std::endl;
-    std::cout << "Base Rotation: (" << baseRotation.x << ", " << baseRotation.y << ", " << baseRotation.z << ")" << std::endl;
-    std::cout << "Recoil Rotation: (" << recoilRotation.x << ", " << recoilRotation.y << ", " << recoilRotation.z << ")" << std::endl;
-    std::cout << "Final Rotation: (" << finalRotation.x << ", " << finalRotation.y << ", " << finalRotation.z << ")" << std::endl;
 }
 
 void Camera::updateRecoil(float deltaTime) {

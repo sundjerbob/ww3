@@ -1,13 +1,13 @@
 /*
- * FRAGMENT SHADER - Pixel Color Generation
+ * TERRAIN FRAGMENT SHADER - Height-Based Terrain Coloring with Lighting
  * 
  * PURPOSE:
- * Determines the final color of each pixel (fragment) on the rendered surface.
- * This is the final programmable stage before the fragment is written to the frame buffer.
+ * Determines the final color of each pixel (fragment) on the terrain surface.
+ * Uses height-based coloring with proper normal-based lighting.
  * 
  * MATHEMATICAL PROCESS:
- * 1. Input: Interpolated values from vertex shader (position, if any)
- * 2. Calculate: Fragment color based on lighting, materials, textures, etc.
+ * 1. Input: Interpolated world position and normal from vertex shader
+ * 2. Calculate: Fragment color based on height and lighting
  * 3. Output: Final RGBA color value for this pixel
  * 
  * COLOR REPRESENTATION:
@@ -28,11 +28,12 @@
  */
 
 #version 330 core
-in vec3 outPos;     // Position from vertex shader
-in vec2 outTexCoord; // Texture coordinates from vertex shader
+in vec3 outPos;     // World position from vertex shader
+in vec3 outNormal;  // World normal from vertex shader
 out vec4 FragColor; // Output color for this fragment/pixel
+
 uniform vec3 color;              // Per-object color (used when height coloring is disabled)
-uniform int useHeightColoring;   // 1 = enable height-based coloring (world), 0 = use object color
+uniform int useHeightColoring;   // 1 = enable height-based coloring (terrain), 0 = use object color
 
 // Lighting uniforms
 uniform vec3 lightDirection;     // Direction of the light (should be normalized)
@@ -104,16 +105,15 @@ void main()
             baseColor = vec3(0.9f, 0.9f, 0.9f);
         }
         
-        // Apply directional lighting to terrain
-        // Since we don't have normals, use a simple directional lighting based on position
+        // Apply directional lighting to terrain using proper normals
+        vec3 normal = normalize(outNormal);
         vec3 lightDir = normalize(lightDirection);
         
         // Ambient lighting
         vec3 ambient = ambientStrength * ambientColor;
         
-        // Simple diffuse lighting using world position (approximation)
-        // This creates a basic lighting effect without requiring normals
-        float diff = max(dot(normalize(outPos), lightDir), 0.0);
+        // Diffuse lighting using proper normal
+        float diff = max(dot(normal, lightDir), 0.0);
         vec3 diffuse = diffuseStrength * diff * lightColor;
         
         // Combine lighting with base color
@@ -121,7 +121,7 @@ void main()
         
         FragColor = vec4(result, 1.0f);
     } else {
-        // Per-object solid color (used for weapon/objects overlays until textured rendering is added)
+        // Per-object solid color (used for non-terrain objects)
         FragColor = vec4(color, 1.0f);
     }
 }

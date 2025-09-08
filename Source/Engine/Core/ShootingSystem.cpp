@@ -6,6 +6,12 @@
 #include "../GameObjects/Weapon.h"
 #include "../Math/Camera.h"
 #include <iostream>
+#include <cmath>
+
+// Define M_PI if not already defined
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 #include <algorithm>
 
 namespace Engine {
@@ -53,14 +59,6 @@ void ShootingSystem::update(float deltaTime) {
     
     // Handle firing logic
     if (isFiring) {
-        std::cout << "=== FIRING LOGIC DEBUG ===" << std::endl;
-        std::cout << "isFiring: " << (isFiring ? "true" : "false") << std::endl;
-        std::cout << "canFire(): " << (canFire() ? "true" : "false") << std::endl;
-        std::cout << "hasAmmo(): " << (hasAmmo() ? "true" : "false") << std::endl;
-        std::cout << "reloadInProgress: " << (weaponStats.reloadInProgress ? "true" : "false") << std::endl;
-        std::cout << "checkFireCooldown(): " << (checkFireCooldown() ? "true" : "false") << std::endl;
-        std::cout << "fireTimer: " << fireTimer << std::endl;
-        std::cout << "fireRate: " << weaponStats.fireRate << std::endl;
         
         if (canFire()) {
             // Fire and reset timer for next shot
@@ -80,11 +78,6 @@ void ShootingSystem::setWeapon(Weapon* weapon) {
 
 void ShootingSystem::configureWeapon(const WeaponStats& stats) {
     weaponStats = stats;
-    std::cout << "=== WEAPON CONFIGURED ===" << std::endl;
-    std::cout << "Current Ammo: " << weaponStats.currentAmmo << "/" << weaponStats.maxAmmo << std::endl;
-    std::cout << "Reserve Ammo: " << weaponStats.currentReserveAmmo << "/" << weaponStats.maxReserveAmmo << std::endl;
-    std::cout << "Recoil: " << weaponStats.recoil << std::endl;
-    std::cout << "Fire Rate: " << weaponStats.fireRate << std::endl;
 }
 
 void ShootingSystem::setProjectileManager(ProjectileManager* manager) {
@@ -107,7 +100,6 @@ void ShootingSystem::fireSingleShot() {
     if (!canFire()) return;
     
     // Fire logic implementation
-    std::cout << "Firing single shot" << std::endl;
     
     // Consume ammo
     consumeAmmo();
@@ -116,16 +108,12 @@ void ShootingSystem::fireSingleShot() {
     applyRecoil();
     
     // Spawn and fire projectile
-    std::cout << "=== PROJECTILE DEBUG ===" << std::endl;
-    std::cout << "projectileManager: " << (projectileManager ? "valid" : "null") << std::endl;
-    std::cout << "currentWeapon: " << (currentWeapon ? "valid" : "null") << std::endl;
     
     if (projectileManager && currentWeapon) {
         Vec3 firePos = getFirePosition();
         Vec3 fireDir = getFireDirection();
         fireProjectile(firePos, fireDir);
     } else {
-        std::cout << "Cannot fire projectile - missing manager or weapon" << std::endl;
     }
 }
 
@@ -185,9 +173,6 @@ void ShootingSystem::cancelReload() {
 void ShootingSystem::applyRecoil() {
     // Calculate recoil pattern (upward and slightly random)
     float recoilForce = weaponStats.recoil;
-    std::cout << "=== APPLYING RECOIL ===" << std::endl;
-    std::cout << "Recoil Force: " << recoilForce << std::endl;
-    std::cout << "Current Recoil Pattern: (" << recoilPattern.x << ", " << recoilPattern.y << ", " << recoilPattern.z << ")" << std::endl;
     
     float randomX = (static_cast<float>(rand()) / RAND_MAX - 0.5f) * 0.3f; // Random horizontal recoil
     float randomZ = (static_cast<float>(rand()) / RAND_MAX - 0.5f) * 0.1f; // Random forward/backward recoil
@@ -210,14 +195,10 @@ void ShootingSystem::applyRecoil() {
     
     // Notify visual systems of recoil
     if (onRecoilApplied) {
-        std::cout << "=== RECOIL CALLBACK TRIGGERED ===" << std::endl;
         onRecoilApplied(recoilPattern);
     } else {
-        std::cout << "=== RECOIL CALLBACK NOT SET ===" << std::endl;
     }
     
-    std::cout << "=== RECOIL APPLIED ===" << std::endl;
-    std::cout << "Recoil Pattern: (" << recoilPattern.x << ", " << recoilPattern.y << ", " << recoilPattern.z << ")" << std::endl;
 }
 
 void ShootingSystem::updateRecoil(float deltaTime) {
@@ -275,41 +256,103 @@ void ShootingSystem::setRecoilCallback(std::function<void(const Vec3&)> callback
 Projectile* ShootingSystem::spawnProjectile(const Vec3& position, const Vec3& direction) {
     if (!projectileManager) return nullptr;
     
-    std::cout << "=== SPAWNING PROJECTILE ===" << std::endl;
-    Projectile* projectile = projectileManager->createProjectile(weaponStats.projectileConfig, "Projectile");
+    
+    // Use monster hunter projectile for better monster damage
+    Projectile* projectile = projectileManager->createMonsterHunterProjectile("MonsterHunterProjectile");
+    
     if (projectile) {
-        std::cout << "Projectile created successfully" << std::endl;
     } else {
-        std::cout << "Failed to create projectile" << std::endl;
+    }
+    return projectile;
+}
+
+Projectile* ShootingSystem::spawnMonsterHunterProjectile(const Vec3& position, const Vec3& direction) {
+    if (!projectileManager) return nullptr;
+    
+    
+    // Use monster hunter projectile for better monster damage
+    Projectile* projectile = projectileManager->createMonsterHunterProjectile("MonsterHunterProjectile");
+    
+    if (projectile) {
+    } else {
     }
     return projectile;
 }
 
 void ShootingSystem::fireProjectile(const Vec3& position, const Vec3& direction) {
-    std::cout << "=== FIRING PROJECTILE ===" << std::endl;
-    std::cout << "Position: (" << position.x << ", " << position.y << ", " << position.z << ")" << std::endl;
-    std::cout << "Direction: (" << direction.x << ", " << direction.y << ", " << direction.z << ")" << std::endl;
+    // Debug output (disabled for now)
+    // std::cout << "=== FIRING PROJECTILE ===" << std::endl;
+    // std::cout << "Fire position: (" << position.x << ", " << position.y << ", " << position.z << ")" << std::endl;
+    // std::cout << "Fire direction: (" << direction.x << ", " << direction.y << ", " << direction.z << ")" << std::endl;
     
     Projectile* projectile = spawnProjectile(position, direction);
     if (projectile) {
         projectile->fire(position, direction, currentWeapon);
-        std::cout << "Projectile fired successfully" << std::endl;
+        // std::cout << "Projectile fired successfully" << std::endl;
     } else {
-        std::cout << "Failed to fire projectile" << std::endl;
+        // std::cout << "Failed to spawn projectile!" << std::endl;
+    }
+    // std::cout << "=========================" << std::endl;
+}
+
+void ShootingSystem::fireMonsterHunterProjectile(const Vec3& position, const Vec3& direction) {
+    
+    Projectile* projectile = spawnMonsterHunterProjectile(position, direction);
+    if (projectile) {
+        projectile->fire(position, direction, currentWeapon);
+    } else {
     }
 }
 
 Vec3 ShootingSystem::getFireDirection() const {
-    if (playerCamera) {
-        return playerCamera->getForward();
+    if (playerCamera && currentWeapon) {
+        // Calculate the crosshair target position in world space
+        // The crosshair is at the center of the screen, so we need to calculate
+        // where a ray from the camera through the center of the screen would go
+        
+        // Get camera position and forward direction
+        Vec3 cameraPos = playerCamera->getPosition();
+        Vec3 cameraForward = playerCamera->getForward();
+        
+        // Calculate a point far ahead in the camera's forward direction
+        // This represents where the crosshair is pointing in world space
+        const float crosshairDistance = 100.0f; // Distance to project the crosshair target
+        Vec3 crosshairTarget = cameraPos + cameraForward * crosshairDistance;
+        
+        // Get the gun barrel position
+        Vec3 gunBarrelPos = currentWeapon->getWorldPosition();
+        
+        // Calculate direction from gun barrel to crosshair target
+        Vec3 fireDirection = crosshairTarget - gunBarrelPos;
+        fireDirection = fireDirection.normalize();
+        
+        // Debug output
+        std::cout << "=== GUN TO CROSSHAIR DIRECTION ===" << std::endl;
+        std::cout << "Camera position: (" << cameraPos.x << ", " << cameraPos.y << ", " << cameraPos.z << ")" << std::endl;
+        std::cout << "Camera forward: (" << cameraForward.x << ", " << cameraForward.y << ", " << cameraForward.z << ")" << std::endl;
+        std::cout << "Crosshair target: (" << crosshairTarget.x << ", " << crosshairTarget.y << ", " << crosshairTarget.z << ")" << std::endl;
+        std::cout << "Gun barrel position: (" << gunBarrelPos.x << ", " << gunBarrelPos.y << ", " << gunBarrelPos.z << ")" << std::endl;
+        std::cout << "Fire direction (gun to crosshair): (" << fireDirection.x << ", " << fireDirection.y << ", " << fireDirection.z << ")" << std::endl;
+        std::cout << "===================================" << std::endl;
+        
+        return fireDirection;
     }
     return Vec3(0.0f, 0.0f, -1.0f); // Default forward direction
 }
 
 Vec3 ShootingSystem::getFirePosition() const {
-    if (currentWeapon) {
-        return currentWeapon->getPosition();
+    if (currentWeapon && playerCamera) {
+        // Use the weapon's world position calculation (returns barrel tip position)
+        Vec3 barrelTipPos = currentWeapon->getWorldPosition();
+        
+        // Debug output
+        std::cout << "=== GUN BARREL FIRE POSITION ===" << std::endl;
+        std::cout << "Gun barrel position: (" << barrelTipPos.x << ", " << barrelTipPos.y << ", " << barrelTipPos.z << ")" << std::endl;
+        std::cout << "=================================" << std::endl;
+        
+        return barrelTipPos;
     }
+    std::cout << "WARNING: No weapon or camera available for fire position!" << std::endl;
     return Vec3(0.0f, 0.0f, 0.0f);
 }
 
@@ -399,6 +442,17 @@ void WeaponShootingComponent::stopFiring() {
 void WeaponShootingComponent::fireSingleShot() {
     if (isEnabled) {
         shootingSystem.fireSingleShot();
+    }
+}
+
+void WeaponShootingComponent::fireMonsterHunterShot() {
+    if (isEnabled) {
+        // Get fire position and direction from shooting system
+        Vec3 firePos = shootingSystem.getFirePosition();
+        Vec3 fireDir = shootingSystem.getFireDirection();
+        
+        // Fire monster hunter projectile
+        shootingSystem.fireMonsterHunterProjectile(firePos, fireDir);
     }
 }
 

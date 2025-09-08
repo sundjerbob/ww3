@@ -13,7 +13,7 @@ namespace Engine {
 GameObject::GameObject(const std::string& objectName)
     : position(0.0f, 0.0f, 0.0f), rotation(0.0f, 0.0f, 0.0f), scale(1.0f, 1.0f, 1.0f),
       parent(nullptr), color(1.0f, 1.0f, 1.0f), name(objectName), isActive(true), isInitialized(false), isEntity(false), 
-      lastUpdateTime(0.0f), objectRenderer(nullptr) {}
+      lastUpdateTime(0.0f), objectRenderer(nullptr), owningScene(nullptr) {}
 
 GameObject::~GameObject() {
     cleanup();

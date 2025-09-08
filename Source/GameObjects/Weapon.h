@@ -128,6 +128,9 @@ public:
     void setWeaponOffset(const Vec3& offset) { weaponOffset = offset; }
     Vec3 getWeaponOffset() const { return weaponOffset; }
     
+    // World position calculation
+    Vec3 getWorldPosition() const;
+    
     void setAimSensitivity(float sensitivity) { aimSensitivity = sensitivity; }
     float getAimSensitivity() const { return aimSensitivity; }
     
@@ -166,6 +169,7 @@ public:
     void startFiring();
     void stopFiring();
     void fireSingleShot();
+    void fireMonsterHunterShot();
     bool canFire() const;
     bool hasAmmo() const;
     void reload();

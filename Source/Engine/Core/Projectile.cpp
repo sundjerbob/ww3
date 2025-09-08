@@ -7,9 +7,15 @@
 #include "../Rendering/Mesh.h"
 #include "../Rendering/Shader.h"
 #include "../Math/Math.h"
+#include "../../GameObjects/Monster.h"
 #include <iostream>
 #include <algorithm>
 #include <cmath>
+
+// Define M_PI if not already defined
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 namespace Engine {
 
@@ -34,8 +40,8 @@ Projectile::Projectile(const std::string& name, const ProjectileConfig& config)
       audioSystem(nullptr),
       owner(nullptr) {
     
-    // Set projectile to not be a world entity (it's a temporary object)
-    setEntity(false);
+    // Set projectile to be a world entity so it renders in 3D space
+    setEntity(true);
     
     // Set initial scale based on projectile size
     setScale(Vec3(config.size, config.size, config.size));
@@ -45,71 +51,132 @@ Projectile::Projectile(const std::string& name, const ProjectileConfig& config)
 }
 
 bool Projectile::initialize() {
+    
     if (!GameObject::initialize()) {
         return false;
     }
     
-    // Create projectile mesh (simple sphere for now)
-    setupProjectileMesh();
-    
     return true;
 }
 
-void Projectile::setupProjectileMesh() {
-    // Create a simple sphere mesh for the projectile
-    // This can be enhanced with different meshes for different projectile types
+void Projectile::setupMesh() {
+    // Create a bullet-shaped mesh for the projectile
+    // This makes projectiles look more realistic and professional
+    
+    // Bullet shape: cylinder with pointed tip
     std::vector<float> vertices;
     std::vector<unsigned int> indices;
     
-    // Generate sphere vertices (simplified)
-    const int segments = 8;
-    const int rings = 6;
-    const float radius = 0.5f;
+    const int segments = 12;  // Number of segments for the cylinder
+    const float radius = 0.1f;  // Bullet radius
+    const float length = 0.4f;  // Bullet length
+    const float tipLength = 0.15f;  // Pointed tip length
     
-    // Generate vertices
-    for (int ring = 0; ring <= rings; ++ring) {
-        float phi = (float)ring * 3.14159f / rings;
-        float y = radius * cos(phi);
-        float ringRadius = radius * sin(phi);
+    // Generate cylinder body vertices with texture coordinates
+    for (int i = 0; i <= segments; i++) {
+        float angle = (2.0f * static_cast<float>(M_PI) * i) / segments;
+        float x = radius * cos(angle);
+        float y = radius * sin(angle);
+        float u = static_cast<float>(i) / segments; // Texture coordinate U
         
-        for (int segment = 0; segment <= segments; ++segment) {
-            float theta = (float)segment * 2.0f * 3.14159f / segments;
-            float x = ringRadius * cos(theta);
-            float z = ringRadius * sin(theta);
-            
-            vertices.push_back(x);
-            vertices.push_back(y);
-            vertices.push_back(z);
-        }
+        // Back of bullet (flat end) - position + texture coords
+        vertices.push_back(x);
+        vertices.push_back(y);
+        vertices.push_back(-length/2);
+        vertices.push_back(u);
+        vertices.push_back(0.0f); // V coordinate for back
+        
+        // Front of bullet body (before tip) - position + texture coords
+        vertices.push_back(x);
+        vertices.push_back(y);
+        vertices.push_back(length/2 - tipLength);
+        vertices.push_back(u);
+        vertices.push_back(0.8f); // V coordinate for front body
     }
     
-    // Generate indices
-    for (int ring = 0; ring < rings; ++ring) {
-        for (int segment = 0; segment < segments; ++segment) {
-            int current = ring * (segments + 1) + segment;
-            int next = current + segments + 1;
-            
-            indices.push_back(current);
-            indices.push_back(next);
-            indices.push_back(current + 1);
-            
-            indices.push_back(next);
-            indices.push_back(next + 1);
-            indices.push_back(current + 1);
-        }
+    // Generate tip vertices with texture coordinates
+    for (int i = 0; i <= segments; i++) {
+        float angle = (2.0f * static_cast<float>(M_PI) * i) / segments;
+        float x = radius * cos(angle);
+        float y = radius * sin(angle);
+        float u = static_cast<float>(i) / segments; // Texture coordinate U
+        
+        // Front of bullet body (before tip) - position + texture coords
+        vertices.push_back(x);
+        vertices.push_back(y);
+        vertices.push_back(length/2 - tipLength);
+        vertices.push_back(u);
+        vertices.push_back(0.8f); // V coordinate for front body
+        
+        // Tip of bullet (point) - position + texture coords
+        vertices.push_back(0.0f);
+        vertices.push_back(0.0f);
+        vertices.push_back(length/2);
+        vertices.push_back(0.5f); // Center U coordinate for tip
+        vertices.push_back(1.0f); // V coordinate for tip
+    }
+    
+    // Generate indices for cylinder body
+    for (int i = 0; i < segments; i++) {
+        int base = i * 2;
+        
+        // Side face (quad as two triangles)
+        indices.push_back(base);
+        indices.push_back(base + 1);
+        indices.push_back(base + 2);
+        
+        indices.push_back(base + 1);
+        indices.push_back(base + 3);
+        indices.push_back(base + 2);
+    }
+    
+    // Generate indices for tip
+    int tipBase = (segments + 1) * 2;
+    for (int i = 0; i < segments; i++) {
+        int base = tipBase + i * 2;
+        
+        // Tip face (triangle)
+        indices.push_back(base);
+        indices.push_back(base + 1);
+        indices.push_back((i + 1) % segments + tipBase);
+    }
+    
+    // Add end caps
+    for (int i = 0; i < segments - 2; i++) {
+        // Back cap
+        indices.push_back(0);
+        indices.push_back((i + 1) * 2);
+        indices.push_back((i + 2) * 2);
+        
+        // Front cap (before tip)
+        indices.push_back(1);
+        indices.push_back((i + 1) * 2 + 1);
+        indices.push_back((i + 2) * 2 + 1);
     }
     
     mesh = std::make_unique<Mesh>();
-    if (!mesh->createMesh(vertices, indices)) {
-        std::cerr << "Failed to create projectile mesh" << std::endl;
+    if (!mesh->createMeshWithTexCoords(vertices, indices)) {
+        std::cout << "ERROR: Failed to create bullet mesh for projectile " << getName() << std::endl;
     }
 }
 
 void Projectile::update(float deltaTime) {
     if (isDestroyed) return;
     
+    // Debug output to see if projectiles are updating (reduced frequency)
+    static int updateCount = 0;
+    updateCount++;
+    if (updateCount % 600 == 0) { // Print every 600 frames (about every 10 seconds)
+    }
+    
     // Update lifetime
     currentLifetime += deltaTime;
+    
+    // Debug lifetime update (reduced frequency)
+    static int lifetimeDebugCount = 0;
+    lifetimeDebugCount++;
+    if (lifetimeDebugCount % 300 == 0) { // Print every 300 frames (about every 5 seconds)
+    }
     
     // Check lifetime limit
     checkLifetime();
@@ -143,6 +210,12 @@ void Projectile::update(float deltaTime) {
 void Projectile::render(const Renderer& renderer, const Camera& camera) {
     if (isDestroyed) return;
     
+    // Debug output to see if projectiles are rendering
+    static int renderCount = 0;
+    renderCount++;
+    if (renderCount % 60 == 0) { // Print every 60 frames (about every second)
+    }
+    
     // Render the projectile
     GameObject::render(renderer, camera);
     
@@ -153,12 +226,27 @@ void Projectile::render(const Renderer& renderer, const Camera& camera) {
 }
 
 void Projectile::fire(const Vec3& position, const Vec3& direction, GameObject* owner) {
+    // Debug output
+    std::cout << "=== PROJECTILE FIRE ===" << std::endl;
+    std::cout << "Projectile name: " << getName() << std::endl;
+    std::cout << "Fire position: (" << position.x << ", " << position.y << ", " << position.z << ")" << std::endl;
+    std::cout << "Fire direction: (" << direction.x << ", " << direction.y << ", " << direction.z << ")" << std::endl;
+    
     startPosition = position;
     setPosition(position);
+    
+    // std::cout << "After setPosition, projectile position: (" << getPosition().x << ", " << getPosition().y << ", " << getPosition().z << ")" << std::endl;
     
     // Normalize direction and set velocity
     Vec3 normalizedDir = Engine::normalize(direction);
     velocity = normalizedDir * config.speed;
+    
+    std::cout << "Velocity: (" << velocity.x << ", " << velocity.y << ", " << velocity.z << ")" << std::endl;
+    std::cout << "Normalized direction: (" << normalizedDir.x << ", " << normalizedDir.y << ", " << normalizedDir.z << ")" << std::endl;
+    
+    // Simple rotation: no rotation for now, just use default orientation
+    setRotation(Vec3(0.0f, 0.0f, 0.0f));
+    std::cout << "Rotation set to: (0, 0, 0)" << std::endl;
     
     // Set owner
     this->owner = owner;
@@ -173,6 +261,11 @@ void Projectile::fire(const Vec3& position, const Vec3& direction, GameObject* o
     penetrationCount = 0;
     isDestroyed = false;
     
+    // Make sure projectile is active
+    setActive(true);
+    
+    // std::cout << "=========================" << std::endl;
+    
     // Clear trail
     clearTrail();
     
@@ -185,10 +278,12 @@ void Projectile::fire(const Vec3& position, const Vec3& direction, GameObject* o
     if (config.hasTrail) {
         addTrailPoint(position);
     }
+    
 }
 
 void Projectile::destroy() {
     if (isDestroyed) return;
+    
     
     isDestroyed = true;
     
@@ -243,12 +338,28 @@ void Projectile::updatePhysics(float deltaTime) {
         applyGravity(deltaTime);
     }
     
+    // Store old position for distance calculation
+    Vec3 oldPosition = getPosition();
+    
     // Update position based on velocity
-    Vec3 newPosition = getPosition() + velocity * deltaTime;
+    Vec3 newPosition = oldPosition + velocity * deltaTime;
     setPosition(newPosition);
     
-    // Update distance traveled
-    Vec3 movement = newPosition - getPosition();
+    // Debug output for first few updates (disabled for now)
+    // static int physicsDebugCount = 0;
+    // physicsDebugCount++;
+    // if (physicsDebugCount <= 5) { // Only debug first 5 updates
+    //     std::cout << "=== PROJECTILE PHYSICS UPDATE " << physicsDebugCount << " ===" << std::endl;
+    //     std::cout << "Projectile: " << getName() << std::endl;
+    //     std::cout << "Old position: (" << oldPosition.x << ", " << oldPosition.y << ", " << oldPosition.z << ")" << std::endl;
+    //     std::cout << "Velocity: (" << velocity.x << ", " << velocity.y << ", " << velocity.z << ")" << std::endl;
+    //     std::cout << "Delta time: " << deltaTime << std::endl;
+    //     std::cout << "New position: (" << newPosition.x << ", " << newPosition.y << ", " << newPosition.z << ")" << std::endl;
+    //     std::cout << "=====================================" << std::endl;
+    // }
+    
+    // Update distance traveled (calculate movement from old to new position)
+    Vec3 movement = newPosition - oldPosition;
     distanceTraveled += movement.length();
     
     // Add trail point
@@ -282,10 +393,7 @@ void Projectile::checkMonsterCollisions() {
     // This is a placeholder - actual implementation will use scene's entity list
     if (distanceTraveled > 1.0f) {  // Only check after traveling some distance
         // TODO: Implement proper monster collision detection
-        // For now, just destroy projectile after some distance
-        if (distanceTraveled > 50.0f) {
-            destroy();
-        }
+        // Removed hardcoded distance limit - let projectiles use their configured lifetime and maxDistance
     }
 }
 
@@ -336,6 +444,19 @@ void Projectile::cleanupTrail() {
 bool Projectile::checkCollision(GameObject* target) {
     if (!target || target == owner) return false;
     
+    // Ignore terrain collisions - we only want to hit monsters
+    if (target->getName().find("SimpleChunkTerrain") != std::string::npos ||
+        target->getName().find("Chunk_") != std::string::npos ||
+        target->getName().find("WaterSurface") != std::string::npos) {
+        return false;
+    }
+    
+    // Only check collisions with monsters and other entities
+    if (target->getName().find("Monster_") == std::string::npos &&
+        target->getName().find("HealthBar") == std::string::npos) {
+        return false;
+    }
+    
     // Simple sphere-sphere collision for now
     // This can be enhanced with more sophisticated collision detection
     Vec3 projectilePos = getPosition();
@@ -343,13 +464,48 @@ bool Projectile::checkCollision(GameObject* target) {
     float distance = (projectilePos - targetPos).length();
     
     float projectileRadius = config.size;
-    float targetRadius = 1.0f; // Default target radius, should be configurable
+    
+    // Get proper collision radius from target
+    float targetRadius = 1.0f; // Default fallback
+    Vec3 targetCenter = targetPos;
+    
+    // Check if target is a monster and get its proper collision data
+    if (target->getName().find("Monster_") != std::string::npos) {
+        // Try to cast to Monster to get proper collision data
+        try {
+            Monster* monster = dynamic_cast<Monster*>(target);
+            if (monster) {
+                targetRadius = monster->getCollisionRadius();
+                targetCenter = monster->getCollisionCenter();
+                
+                // Recalculate distance with proper collision center
+                distance = (projectilePos - targetCenter).length();
+            } else {
+                // Fallback if cast fails
+                targetRadius = 1.5f;
+                targetCenter.y += 1.0f;
+                distance = (projectilePos - targetCenter).length();
+            }
+        } catch (...) {
+            // Fallback if any error occurs
+            targetRadius = 1.5f;
+            targetCenter.y += 1.0f;
+            distance = (projectilePos - targetCenter).length();
+        }
+    }
+    
+    // Debug collision detection
+    static int collisionDebugCount = 0;
+    collisionDebugCount++;
+    if (collisionDebugCount % 300 == 0) { // Print every 5 seconds
+    }
     
     return distance < (projectileRadius + targetRadius);
 }
 
 void Projectile::handleCollision(GameObject* target) {
     if (!target) return;
+    
     
     // Calculate and apply damage
     float damage = calculateDamage(target);
@@ -370,10 +526,12 @@ void Projectile::handleCollision(GameObject* target) {
         return;
     }
     
-    // Destroy projectile if configured to do so
-    if (config.destroyOnCollision) {
+    // Only destroy projectile if hitting monsters (not terrain)
+    if (target->getName().find("Monster_") != std::string::npos) {
         destroy();
+    } else {
     }
+    
 }
 
 float Projectile::calculateDamage(GameObject* target) {
@@ -398,13 +556,11 @@ float Projectile::calculateDamage(GameObject* target) {
 void Projectile::applyDamage(GameObject* target, float damage) {
     // This is a placeholder - damage application should be implemented
     // based on the target's damage system
-    std::cout << "Projectile " << getName() << " dealt " << damage << " damage to " << target->getName() << std::endl;
 }
 
 void Projectile::spawnImpactEffect(const Vec3& position, const Vec3& normal) {
     // Placeholder for impact effects
     // This should spawn particles, play sounds, etc.
-    std::cout << "Impact effect at position (" << position.x << ", " << position.y << ", " << position.z << ")" << std::endl;
 }
 
 void Projectile::spawnTrailEffect() {
@@ -415,7 +571,6 @@ void Projectile::spawnTrailEffect() {
 void Projectile::playSound(const std::string& soundName) {
     // Placeholder for sound system
     // This should play the specified sound
-    std::cout << "Playing sound: " << soundName << std::endl;
 }
 
 Vec3 Projectile::predictPosition(float timeAhead) const {
@@ -445,8 +600,6 @@ void Projectile::performExplosion(const Vec3& position) {
     
     // Placeholder for explosion effects
     // This should create explosion particles, apply force to nearby objects, etc.
-    std::cout << "Explosion at position (" << position.x << ", " << position.y << ", " << position.z << ")" << std::endl;
-    std::cout << "Explosion radius: " << config.explosionRadius << ", Force: " << config.explosionForce << std::endl;
 }
 
 // Virtual method implementations
@@ -628,6 +781,26 @@ void ProjectileManager::initialize(CollisionSystem* collision, ParticleSystem* p
     audioSystem = audio;
 }
 
+// MonsterProjectile - Specialized projectile for monster damage
+class MonsterProjectile : public Projectile {
+public:
+    MonsterProjectile(const std::string& name, const ProjectileConfig& config) 
+        : Projectile(name, config) {}
+    
+    virtual void onHit(GameObject* target) override {
+        
+        // Check if target is a monster
+        Monster* monster = dynamic_cast<Monster*>(target);
+        if (monster && monster->isAlive()) {
+            // Apply damage to monster
+            float damage = calculateDamage(target);
+            monster->takeDamage(damage, getOwner());
+            
+        } else {
+        }
+    }
+};
+
 void ProjectileManager::update(float deltaTime) {
     // Update all active projectiles
     for (auto it = activeProjectiles.begin(); it != activeProjectiles.end();) {
@@ -644,6 +817,23 @@ void ProjectileManager::update(float deltaTime) {
 }
 
 void ProjectileManager::render(const Renderer& renderer, const Camera& camera) {
+    static int renderCount = 0;
+    renderCount++;
+    
+    if (renderCount % 180 == 0) { // Print every 3 seconds
+        
+        // List all active projectiles
+        for (size_t i = 0; i < activeProjectiles.size(); ++i) {
+            auto& projectile = activeProjectiles[i];
+            if (projectile->isActive()) {
+                std::cout << "  Projectile " << i << ": " << projectile->getName() 
+                          << " at (" << projectile->getPosition().x << ", " 
+                          << projectile->getPosition().y << ", " 
+                          << projectile->getPosition().z << ")" << std::endl;
+            }
+        }
+    }
+    
     // Render all active projectiles
     for (auto& projectile : activeProjectiles) {
         if (projectile->isActive()) {
@@ -657,9 +847,34 @@ void ProjectileManager::cleanup() {
 }
 
 Projectile* ProjectileManager::createProjectile(const ProjectileConfig& config, const std::string& name) {
-    auto projectile = std::make_unique<Projectile>(name.empty() ? "Projectile" : name, config);
+    // std::cout << "=== PROJECTILE MANAGER: CREATING PROJECTILE ===" << std::endl;
+    
+    // Use MonsterProjectile for better monster damage handling
+    auto projectile = std::make_unique<MonsterProjectile>(name.empty() ? "Projectile" : name, config);
     Projectile* ptr = projectile.get();
+    
+    // std::cout << "Projectile created, checking initial state:" << std::endl;
+    // std::cout << "  Name: " << ptr->getName() << std::endl;
+    // std::cout << "  Active: " << (ptr->isActive() ? "true" : "false") << std::endl;
+    // std::cout << "  Position: (" << ptr->getPosition().x << ", " << ptr->getPosition().y << ", " << ptr->getPosition().z << ")" << std::endl;
+    
+    // Initialize the projectile
+    if (!ptr->initialize()) {
+        // std::cout << "Failed to initialize projectile!" << std::endl;
+        return nullptr;
+    }
+    
+    // std::cout << "After initialization:" << std::endl;
+    // std::cout << "  Active: " << (ptr->isActive() ? "true" : "false") << std::endl;
+    // std::cout << "  Position: (" << ptr->getPosition().x << ", " << ptr->getPosition().y << ", " << ptr->getPosition().z << ")" << std::endl;
+    
     activeProjectiles.push_back(std::move(projectile));
+    
+    // std::cout << "Projectile added to active list. Total active: " << activeProjectiles.size() << std::endl;
+    // std::cout << "Projectile pointer: " << ptr << std::endl;
+    // std::cout << "Projectile active: " << (ptr->isActive() ? "true" : "false") << std::endl;
+    // std::cout << "=============================================" << std::endl;
+    
     return ptr;
 }
 
@@ -676,12 +891,61 @@ void ProjectileManager::destroyAllProjectiles() {
     activeProjectiles.clear();
 }
 
+// Create a projectile specifically designed for monster hunting
+Projectile* ProjectileManager::createMonsterHunterProjectile(const std::string& name) {
+    // std::cout << "=== CREATING MONSTER HUNTER PROJECTILE ===" << std::endl;
+    
+    ProjectileConfig config;
+    config.type = ProjectileType::Bullet;
+    config.speed = 80.0f;  // Slower for better visibility
+    config.maxDistance = 150.0f;
+    config.lifetime = 3.0f;  // Longer lifetime to see them
+    config.size = 1.0f;  // Larger size for better visibility
+    config.damage = 35.0f;  // Good damage against monsters
+    config.color = Vec3(1.0f, 0.0f, 0.0f);  // Bright red for maximum visibility
+    config.hasTrail = true;
+    config.trailLength = 2.0f;
+    config.destroyOnCollision = false;  // Don't destroy on terrain collision
+    config.penetrateTargets = true;  // Allow penetrating terrain to reach monsters
+    config.maxPenetrations = 5;  // Allow multiple terrain penetrations
+    
+    // std::cout << "Projectile config created:" << std::endl;
+    // std::cout << "  Size: " << config.size << std::endl;
+    // std::cout << "  Color: (" << config.color.x << ", " << config.color.y << ", " << config.color.z << ")" << std::endl;
+    // std::cout << "  Speed: " << config.speed << std::endl;
+    // std::cout << "  Lifetime: " << config.lifetime << std::endl;
+    
+    Projectile* projectile = createProjectile(config, name);
+    
+    if (projectile) {
+        // std::cout << "Monster Hunter Projectile created successfully: " << projectile->getName() << std::endl;
+    } else {
+        // std::cout << "Failed to create Monster Hunter Projectile!" << std::endl;
+    }
+    
+    return projectile;
+}
+
 void ProjectileManager::checkAllCollisions(const std::vector<GameObject*>& gameObjects) {
+    static int collisionCheckCount = 0;
+    collisionCheckCount++;
+    
+    if (collisionCheckCount % 180 == 0) { // Print every 3 seconds
+        // std::cout << "=== COLLISION CHECK DEBUG ===" << std::endl;
+        // std::cout << "Active projectiles: " << activeProjectiles.size() << std::endl;
+        // std::cout << "Game objects to check: " << gameObjects.size() << std::endl;
+    }
+    
     for (auto& projectile : activeProjectiles) {
         if (!projectile->isActive()) continue;
         
         for (GameObject* gameObject : gameObjects) {
             if (projectile->checkCollision(gameObject)) {
+                // std::cout << "=== COLLISION DETECTED ===" << std::endl;
+                // std::cout << "Projectile: " << projectile->getName() << std::endl;
+                // std::cout << "Target: " << gameObject->getName() << std::endl;
+                // std::cout << "Target type: " << typeid(*gameObject).name() << std::endl;
+                
                 projectile->handleCollision(gameObject);
                 break; // Handle one collision at a time
             }

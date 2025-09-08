@@ -15,11 +15,9 @@ MaterialLibrary MaterialLoader::loadMTL(const std::string& mtlFilePath) {
     
     std::ifstream file(mtlFilePath);
     if (!file.is_open()) {
-        std::cerr << "Failed to open MTL file: " << mtlFilePath << std::endl;
         return materialLibrary;
     }
     
-    std::cout << "Loading materials from: " << mtlFilePath << std::endl;
     
     std::string line;
     Material currentMaterial;
@@ -38,7 +36,6 @@ MaterialLibrary MaterialLoader::loadMTL(const std::string& mtlFilePath) {
             // Save previous material if it exists
             if (hasMaterial) {
                 materialLibrary.addMaterial(currentMaterial);
-                std::cout << "  Added material: " << currentMaterial.name << std::endl;
             }
             
             // Start new material
@@ -54,18 +51,16 @@ MaterialLibrary MaterialLoader::loadMTL(const std::string& mtlFilePath) {
     // Add the last material
     if (hasMaterial) {
         materialLibrary.addMaterial(currentMaterial);
-        std::cout << "  Added material: " << currentMaterial.name << std::endl;
     }
     
     file.close();
     
-    std::cout << "Loaded " << materialLibrary.getMaterialCount() << " materials from MTL file" << std::endl;
     
     // Debug: Print all loaded materials
     for (const auto& materialName : materialLibrary.getMaterialNames()) {
         const Material* mat = materialLibrary.getMaterial(materialName);
         if (mat) {
-            std::cout << "  Material '" << mat->name << "': diffuse(" 
+            std::cout << "Material '" << materialName << "' loaded with color ("
                       << mat->diffuse.x << ", " << mat->diffuse.y << ", " << mat->diffuse.z << ")" << std::endl;
         }
     }

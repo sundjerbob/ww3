@@ -11,10 +11,6 @@ namespace Engine {
 
 SimpleChunkTerrainGenerator::SimpleChunkTerrainGenerator(const SimpleChunkTerrainParams& terrainParams)
     : params(terrainParams), rng(params.seed), perlinNoise(params.seed) {
-    std::cout << "SimpleChunkTerrainGenerator: Created with chunk size " << params.chunkSize 
-              << ", resolution " << params.chunkResolution << std::endl;
-    std::cout << "SimpleChunkTerrainGenerator: Using Perlin noise with " << params.octaves 
-              << " octaves, amplitude " << params.amplitude << ", frequency " << params.frequency << std::endl;
 }
 
 float SimpleChunkTerrainGenerator::getHeightAt(float worldX, float worldZ) const {
@@ -87,11 +83,10 @@ void SimpleChunkTerrainGenerator::generateChunkMesh(int chunkX, int chunkZ) {
         return;
     }
     
-    std::cout << "SimpleChunkTerrainGenerator: Generating chunk mesh for (" << chunkX << ", " << chunkZ << ")" << std::endl;
     
     // Calculate chunk world bounds
-    float startX = chunkX * params.chunkSize;
-    float startZ = chunkZ * params.chunkSize;
+    float startX = static_cast<float>(chunkX) * params.chunkSize;
+    float startZ = static_cast<float>(chunkZ) * params.chunkSize;
     float endX = startX + params.chunkSize;
     float endZ = startZ + params.chunkSize;
     
@@ -147,12 +142,11 @@ void SimpleChunkTerrainGenerator::generateChunkMesh(int chunkX, int chunkZ) {
     
     chunk->isGenerated = true;
     
-    std::cout << "SimpleChunkTerrainGenerator: Generated chunk with " << vertices.size() / 6 
+    std::cout << "Generated chunk with " << vertices.size() / 6
               << " vertices and " << indices.size() << " indices" << std::endl;
 }
 
 void SimpleChunkTerrainGenerator::clearAllChunks() {
-    std::cout << "SimpleChunkTerrainGenerator: Clearing all chunks" << std::endl;
     chunks.clear();
 }
 
@@ -172,7 +166,6 @@ float SimpleChunkTerrainGenerator::getHeightAtWorldPos(float worldX, float world
 }
 
 void SimpleChunkTerrainGenerator::setParams(const SimpleChunkTerrainParams& newParams) {
-    std::cout << "SimpleChunkTerrainGenerator: Setting new parameters" << std::endl;
     params = newParams;
     rng.seed(params.seed);
     perlinNoise.setSeed(params.seed);
