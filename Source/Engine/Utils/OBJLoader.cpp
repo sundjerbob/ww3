@@ -23,9 +23,9 @@ OBJMeshData OBJLoader::loadOBJWithProgress(
     LogErrorCallback logError
 ) {
     // Set default logging callbacks if none provided
-    if (!logInfo) logInfo = [](const std::string& msg) { std::cout << msg << std::endl; };
-    if (!logWarning) logWarning = [](const std::string& msg) { std::cout << "Warning: " << msg << std::endl; };
-    if (!logError) logError = [](const std::string& msg) { std::cerr << "Error: " << msg << std::endl; };
+    if (!logInfo) logInfo = [](const std::string& msg) { };
+    if (!logWarning) logWarning = [](const std::string& msg) { };
+    if (!logError) logError = [](const std::string& msg) { };
     
     logInfo("Loading OBJ file: " + filepath);
     
@@ -71,7 +71,6 @@ OBJMeshData OBJLoader::loadOBJWithProgress(
         // Progress reporting for large files
         /*if (lineCount % 10000 == 0) {
             float progress = static_cast<float>(bytesRead) / static_cast<float>(fileSize);
-            std::cout << "Loading progress: " << static_cast<int>(progress * 80) << "%" << std::endl;
         }
         */
         // Skip empty lines and comments
@@ -407,7 +406,7 @@ std::vector<OBJLoader::Face> OBJLoader::parseFace(const std::string& line) {
 
 void OBJLoader::generateNormals(std::vector<TempVertex>& vertices, const std::vector<Face>& faces, LogWarningCallback logWarning) {
     // Set default logging callback if none provided
-    if (!logWarning) logWarning = [](const std::string& msg) { std::cout << "Warning: " << msg << std::endl; };
+    if (!logWarning) logWarning = [](const std::string& msg) { };
     // Initialize all normals to zero
     for (auto& vertex : vertices) {
         vertex.normal = Vec3(0, 0, 0);

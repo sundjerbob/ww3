@@ -84,12 +84,12 @@ void Minimap::setPlayerPosition(const Vec3& position) {
         static int moveDebugCount = 0;
         moveDebugCount++;
         // if (moveDebugCount % 30 == 0) { // More frequent debug output
-        //     std::cout << "=== MINIMAP MOVEMENT DEBUG ===" << std::endl;
-        //     std::cout << "Player movement: (" << movement.x << ", " << movement.y << ", " << movement.z << ")" << std::endl;
-        //     std::cout << "Minimap movement (X,Z only): (" << movement.x << ", 0, " << movement.z << ")" << std::endl;
-        //     std::cout << "World offset BEFORE: (" << worldOffset.x << ", " << worldOffset.y << ", " << worldOffset.z << ")" << std::endl;
-        //     std::cout << "Arrow direction: (" << playerForwardDirection.x << ", " << playerForwardDirection.y << ", " << playerForwardDirection.z << ")" << std::endl;
-        //     std::cout << "Expected: W moves world opposite to player movement" << std::endl;
+        //     // std::cout << "=== MINIMAP MOVEMENT DEBUG ===" << std::endl;
+        //     // std::cout << "Player movement: (" << movement.x << ", " << movement.y << ", " << movement.z << ")" << std::endl;
+        //     // std::cout << "Minimap movement (X,Z only): (" << movement.x << ", 0, " << movement.z << ")" << std::endl;
+        //     // std::cout << "World offset BEFORE: (" << worldOffset.x << ", " << worldOffset.y << ", " << worldOffset.z << ")" << std::endl;
+        //     // std::cout << "Arrow direction: (" << playerForwardDirection.x << ", " << playerForwardDirection.y << ", " << playerForwardDirection.z << ")" << std::endl;
+        //     // std::cout << "Expected: W moves world opposite to player movement" << std::endl;
         // }
     }
     
@@ -101,22 +101,18 @@ Minimap::~Minimap() {
 }
 
 bool Minimap::initialize() {
-    std::cout << "Initializing Minimap..." << std::endl;
     
     if (!GameObject::initialize()) {
-        std::cerr << "Failed to initialize Minimap base class" << std::endl;
         return false;
     }
     
     // Initialize framebuffer for render-to-texture
     if (!initializeFramebuffer()) {
-        std::cerr << "Failed to initialize minimap framebuffer" << std::endl;
         return false;
     }
     
     // Initialize shaders
     if (!initializeShaders()) {
-        std::cerr << "Failed to initialize minimap shaders" << std::endl;
         return false;
     }
     
@@ -124,14 +120,7 @@ bool Minimap::initialize() {
     orthographicCamera.setPosition(Vec3(0.0f, 20.0f, 0.0f)); // Higher up for better view
     orthographicCamera.setTopDownView(); // Use special method for true top-down view
     
-    // Debug: Print camera setup
-    std::cout << "Minimap camera setup:" << std::endl;
-    std::cout << "  Position: (" << orthographicCamera.getPosition().x << ", " 
-              << orthographicCamera.getPosition().y << ", " << orthographicCamera.getPosition().z << ")" << std::endl;
-    std::cout << "  Forward: (" << orthographicCamera.getForward().x << ", " 
-              << orthographicCamera.getForward().y << ", " << orthographicCamera.getForward().z << ")" << std::endl;
-    std::cout << "  Pitch: " << orthographicCamera.getPitch() * 180.0f / 3.14159f << "°" << std::endl;
-    std::cout << "  Yaw: " << orthographicCamera.getYaw() * 180.0f / 3.14159f << "°" << std::endl;
+    // Debug: Print camera setup - removed console output
     
     // Create a simple quad mesh for rendering the minimap texture
     setupMesh();
@@ -144,13 +133,8 @@ bool Minimap::initialize() {
     
     // Initialize the arrow
     if (!playerArrow->initialize()) {
-        std::cerr << "Failed to initialize player arrow!" << std::endl;
     } else {
-        std::cout << "Player arrow initialized successfully" << std::endl;
-        std::cout << "DEBUG: Arrow mesh after init: " << (playerArrow->getMesh() ? "EXISTS" : "NULL") << std::endl;
-        if (playerArrow->getMesh()) {
-            std::cout << "DEBUG: Arrow mesh valid: " << (playerArrow->getMesh()->isValid() ? "YES" : "NO") << std::endl;
-        }
+        // Debug output removed
     }
     
     // Position arrow at world center (0,0,0) - it will stay fixed there
@@ -162,10 +146,7 @@ bool Minimap::initialize() {
     // Store arrow for rendering (not as child, but as separate object)
     playerArrowPtr = std::move(arrow);
     
-    std::cout << "Arrow created successfully at position: (" << playerArrow->getPosition().x << ", " << playerArrow->getPosition().y << ", " << playerArrow->getPosition().z << ")" << std::endl;
-    std::cout << "Arrow mesh valid: " << (playerArrow->getMesh() ? (playerArrow->getMesh()->isValid() ? "YES" : "NO") : "NULL") << std::endl;
-    
-    std::cout << "Minimap initialized successfully" << std::endl;
+    // Debug output removed
     return true;
 }
 
@@ -216,7 +197,6 @@ bool Minimap::initializeFramebuffer() {
     
     // Check if framebuffer is complete
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-        std::cerr << "Framebuffer is not complete!" << std::endl;
         return false;
     }
     
@@ -231,21 +211,18 @@ bool Minimap::initializeShaders() {
     // Create shader for rendering minimap texture to screen
     minimapShader = std::make_unique<Shader>();
     if (!minimapShader->loadFromFiles("Resources/Shaders/minimap_vertex.glsl", "Resources/Shaders/minimap_fragment.glsl")) {
-        std::cerr << "Failed to load minimap shader" << std::endl;
         return false;
     }
     
     // Create shader for orthographic rendering (we'll use the basic shader for now)
     orthographicShader = std::make_unique<Shader>();
     if (!orthographicShader->loadFromFiles("Resources/Shaders/vertex.glsl", "Resources/Shaders/fragment.glsl")) {
-        std::cerr << "Failed to load orthographic shader" << std::endl;
         return false;
     }
     
     // Create shader for arrow rendering with color support
     arrowShader = std::make_unique<Shader>();
     if (!arrowShader->loadFromFiles("Resources/Shaders/arrow_vertex.glsl", "Resources/Shaders/arrow_fragment.glsl")) {
-        std::cerr << "Failed to load arrow shader" << std::endl;
         return false;
     }
     
@@ -276,16 +253,13 @@ void Minimap::setupMesh() {
     
     mesh = std::make_unique<Mesh>();
     if (!mesh->createMeshWithTexCoords(vertices, indices)) {
-        std::cerr << "Failed to create minimap quad mesh" << std::endl;
     }
     
-    std::cout << "Minimap quad created: left=" << left << ", right=" << right 
-              << ", top=" << top << ", bottom=" << bottom << std::endl;
+    // Debug output removed
 }
 
 bool Minimap::updateSceneObjects() {
     if (!scene) {
-        std::cerr << "No scene reference for minimap object update" << std::endl;
         return false;
     }
     
@@ -307,12 +281,10 @@ bool Minimap::updateSceneObjects() {
                 if (isEntityInMinimapScope(entity)) {
                     sceneObjects.push_back(entity);
                 } else {
-                    std::cout << "Minimap: Skipping entity " << entity->getName() << " - outside scope" << std::endl;
                 }
             }
         }
         
-        std::cout << "Minimap: Using Ground visibility system - " << visibleEntities.size() << " visible entities" << std::endl;
     }
     
     static int frameCount = 0;
@@ -320,7 +292,6 @@ bool Minimap::updateSceneObjects() {
 
     // Only print every 100 frames to avoid spam
     if (frameCount % 1000 == 0) {
-        std::cout << "Frame " << frameCount << ": Updating " << gameObjects.size() << " scene objects for GPU-based minimap rendering..." << std::endl;
     }
     
     for (const auto& gameObject : gameObjects) {
@@ -344,7 +315,6 @@ bool Minimap::updateSceneObjects() {
                             
                             if (frameCount % 1000 == 0) {
                                 Vec3 position = chunk->getPosition();
-                                std::cout << "  - " << chunk->getName() << " (chunk): pos(" << position.x << "," << position.y << "," << position.z << ")" << std::endl;
                             }
                         }
                     }
@@ -359,7 +329,6 @@ bool Minimap::updateSceneObjects() {
                 
                 if (frameCount % 1000 == 0) {
                     Vec3 position = simpleChunkTerrain->getPosition();
-                    std::cout << "  - " << simpleChunkTerrain->getName() << " (simple chunk terrain): pos(" << position.x << "," << position.y << "," << position.z << ")" << std::endl;
                 }
             }
             continue;
@@ -369,7 +338,6 @@ bool Minimap::updateSceneObjects() {
         const Mesh* objectMesh = gameObject->getMesh();
         if (!objectMesh || !objectMesh->isValid()) {
             if (frameCount % 1000 == 0) {
-                std::cout << "Skipping " << gameObject->getName() << " - no valid mesh" << std::endl;
             }
             continue;
         }
@@ -385,11 +353,9 @@ bool Minimap::updateSceneObjects() {
             
             if (withinMinimapBounds) {
                 if (frameCount % 1000 == 0) {
-                    std::cout << "Including entity " << gameObject->getName() << " in minimap - within bounds" << std::endl;
                 }
             } else {
                 if (frameCount % 1000 == 0) {
-                    std::cout << "Skipping entity " << gameObject->getName() << " in minimap - outside bounds" << std::endl;
                 }
                 continue;
             }
@@ -403,22 +369,10 @@ bool Minimap::updateSceneObjects() {
             Vec3 position = gameObject->getPosition();
             Vec3 rotation = gameObject->getRotation();
             Vec3 scale = gameObject->getScale();
-            std::cout << "  - " << gameObject->getName() << ": pos(" << position.x << "," << position.y << "," << position.z 
-                      << ") rot(" << rotation.x << "," << rotation.y << "," << rotation.z 
-                      << ") scale(" << scale.x << "," << scale.y << "," << scale.z << ")" << std::endl;
         }
     }
     
     if (frameCount % 1000 == 0) {
-        std::cout << "GPU-based minimap objects prepared: " << sceneObjects.size() << " objects" << std::endl;
-        std::cout << "Minimap bounds: X[" << orthoLeft << " to " << orthoRight << "] Z[" << orthoBottom << " to " << orthoTop << "]" << std::endl;
-        std::cout << "Player position: (" << playerPosition.x << ", " << playerPosition.y << ", " << playerPosition.z << ")" << std::endl;
-        if (playerArrow) {
-            std::cout << "Arrow position: (" << playerArrow->getPosition().x << ", " << playerArrow->getPosition().y << ", " << playerArrow->getPosition().z << ")" << std::endl;
-            std::cout << "Arrow rotation: (" << playerArrow->getRotation().x << ", " << playerArrow->getRotation().y << ", " << playerArrow->getRotation().z << ")" << std::endl;
-            std::cout << "Arrow in bounds: " << (playerArrow->getPosition().x >= orthoLeft && playerArrow->getPosition().x <= orthoRight && 
-                                                 playerArrow->getPosition().z >= orthoBottom && playerArrow->getPosition().z <= orthoTop ? "YES" : "NO") << std::endl;
-        }
     }
     
     return true;
@@ -463,23 +417,18 @@ void Minimap::renderSceneToTexture() {
         static int matrixDebugCount = 0;
         matrixDebugCount++;
         if (matrixDebugCount % 5 == 0) { // Very frequent debug
-            std::cout << "=== TRANSFORMATION MATRICES DEBUG ===" << std::endl;
-            std::cout << "Orthographic matrix scope: L=" << orthoLeft << " R=" << orthoRight << " B=" << orthoBottom << " T=" << orthoTop << std::endl;
+            // Debug output removed
             
             // Debug a specific entity transformation
             for (const GameObject* obj : sceneObjects) {
                 if (obj && obj->getName() == "RedCube") {
                     Vec3 worldPos = obj->getPosition();
-                    std::cout << "RedCube world position: (" << worldPos.x << ", " << worldPos.y << ", " << worldPos.z << ")" << std::endl;
                     
                     // Test coordinate transformation
                     // RedCube is at (5, 0, 3) in world coordinates
                     // With current scope, it should be visible
                     float normalizedX = (worldPos.x - orthoLeft) / (orthoRight - orthoLeft);
                     float normalizedY = (worldPos.z - orthoBottom) / (orthoTop - orthoBottom);
-                    std::cout << "RedCube normalized position: (" << normalizedX << ", " << normalizedY << ")" << std::endl;
-                    std::cout << "Scope: L=" << orthoLeft << " R=" << orthoRight << " B=" << orthoBottom << " T=" << orthoTop << std::endl;
-                    std::cout << "Expected: RedCube should be in top-right area of minimap" << std::endl;
                     break;
                 }
             }
@@ -489,18 +438,6 @@ void Minimap::renderSceneToTexture() {
         static int debugFrameCount = 0;
         debugFrameCount++;
         if (debugFrameCount % 300 == 0) { // Print every 5 seconds (60fps * 5)
-            std::cout << "Minimap rendering debug (MOVEMENT-BASED):" << std::endl;
-            std::cout << "  Camera position: (" << orthographicCamera.getPosition().x << ", " 
-                      << orthographicCamera.getPosition().y << ", " << orthographicCamera.getPosition().z << ") [FIXED]" << std::endl;
-            std::cout << "  Camera forward: (" << orthographicCamera.getForward().x << ", " 
-                      << orthographicCamera.getForward().y << ", " << orthographicCamera.getForward().z << ") [TOP-DOWN]" << std::endl;
-            std::cout << "  Orthographic scope: [" << orthoLeft << ", " << orthoRight << ", " 
-                      << orthoBottom << ", " << orthoTop << "] [MOVEMENT OFFSET]" << std::endl;
-            std::cout << "  Player position: (" << playerPosition.x << ", " << playerPosition.y << ", " << playerPosition.z << ")" << std::endl;
-            std::cout << "  Player forward: (" << playerForwardDirection.x << ", " << playerForwardDirection.y << ", " << playerForwardDirection.z << ")" << std::endl;
-            std::cout << "  World offset: (" << worldOffset.x << ", " << worldOffset.y << ", " << worldOffset.z << ")" << std::endl;
-            std::cout << "  Arrow position: (0, 0, 0) [FIXED AT CENTER]" << std::endl;
-            std::cout << "  Expected: Movement-based world offset" << std::endl;
         }
         
         // ============================================================================
@@ -574,7 +511,6 @@ void Minimap::setMinimapDimensions(int width, int height) {
         initializeFramebuffer();
     }
     
-    std::cout << "Minimap dimensions set to: " << width << "x" << height << std::endl;
 }
 
 void Minimap::setOrthographicScope(float left, float right, float bottom, float top, float near, float far) {
@@ -585,8 +521,8 @@ void Minimap::setOrthographicScope(float left, float right, float bottom, float 
     orthoNear = near;
     orthoFar = far;
     
-    std::cout << "Orthographic scope set to: L=" << left << " R=" << right 
-              << " B=" << bottom << " T=" << top << " N=" << near << " F=" << far << std::endl;
+    // std::cout << "Orthographic scope set to: L=" << left << " R=" << right 
+    //           << " B=" << bottom << " T=" << top << " N=" << near << " F=" << far << std::endl;
 }
 
 void Minimap::getOrthographicScope(float& left, float& right, float& bottom, float& top, float& near, float& far) const {
@@ -634,7 +570,7 @@ void Minimap::renderArrowOverlay() {
     
     if (!playerArrow || !playerArrow->getMesh() || !playerArrow->getMesh()->isValid()) {
         if (debugCount % 100 == 0) {
-            std::cout << "DEBUG: Arrow not ready for rendering" << std::endl;
+            // std::cout << "DEBUG: Arrow not ready for rendering" << std::endl;
         }
         return;
     }
@@ -693,7 +629,7 @@ void Minimap::renderArrowOverlay() {
         playerArrow->getMesh()->render();
         
         if (debugCount % 100 == 0) {
-            std::cout << "DEBUG: Arrow rendered successfully - rotation: " << rotation.y << " degrees" << std::endl;
+            // std::cout << "DEBUG: Arrow rendered successfully - rotation: " << rotation.y << " degrees" << std::endl;
         }
     }
     
@@ -732,19 +668,19 @@ void Minimap::updateOrthographicCamera(const Vec3& playerPosition) {
     static int scopeDebugCount = 0;
     scopeDebugCount++;
     if (scopeDebugCount % 10 == 0) { // More frequent debug
-        std::cout << "=== ORTHOGRAPHIC SCOPE DEBUG ===" << std::endl;
-        std::cout << "World offset: (" << worldOffset.x << ", " << worldOffset.y << ", " << worldOffset.z << ")" << std::endl;
-        std::cout << "Orthographic scope: L=" << orthoLeft << " R=" << orthoRight << " B=" << orthoBottom << " T=" << orthoTop << std::endl;
-        std::cout << "Player position: (" << playerPosition.x << ", " << playerPosition.y << ", " << playerPosition.z << ")" << std::endl;
-        std::cout << "Arrow rotation angle: " << (playerYaw + 90.0f + 180.0f) << " degrees" << std::endl;
+        // std::cout << "=== ORTHOGRAPHIC SCOPE DEBUG ===" << std::endl;
+        // std::cout << "World offset: (" << worldOffset.x << ", " << worldOffset.y << ", " << worldOffset.z << ")" << std::endl;
+        // std::cout << "Orthographic scope: L=" << orthoLeft << " R=" << orthoRight << " B=" << orthoBottom << " T=" << orthoTop << std::endl;
+        // std::cout << "Player position: (" << playerPosition.x << ", " << playerPosition.y << ", " << playerPosition.z << ")" << std::endl;
+        // std::cout << "Arrow rotation angle: " << (playerYaw + 90.0f + 180.0f) << " degrees" << std::endl;
         
         // Debug entity positions
-        std::cout << "=== ENTITY POSITIONS DEBUG ===" << std::endl;
+        // std::cout << "=== ENTITY POSITIONS DEBUG ===" << std::endl;
         for (const GameObject* obj : sceneObjects) {
             if (obj && obj->getEntity()) {
                 Vec3 pos = obj->getPosition();
-                std::cout << "Entity " << obj->getName() << ": world(" << pos.x << ", " << pos.y << ", " << pos.z << ")";
-                std::cout << " in scope: " << (pos.x >= orthoLeft && pos.x <= orthoRight && pos.z >= orthoBottom && pos.z <= orthoTop ? "YES" : "NO") << std::endl;
+                // std::cout << "Entity " << obj->getName() << ": world(" << pos.x << ", " << pos.y << ", " << pos.z << ")";
+                // std::cout << " in scope: " << (pos.x >= orthoLeft && pos.x <= orthoRight && pos.z >= orthoBottom && pos.z <= orthoTop ? "YES" : "NO") << std::endl;
             }
         }
     }
@@ -795,9 +731,9 @@ void Minimap::setPlayerDirectionFromYaw(float yawDegrees) {
     static int debugCount = 0;
     debugCount++;
     if (debugCount % 100 == 0) {
-        std::cout << "DEBUG: Player yaw updated to: " << yawDegrees << " degrees" << std::endl;
-        std::cout << "DEBUG: Player forward direction: (" << playerForwardDirection.x << ", " 
-                  << playerForwardDirection.y << ", " << playerForwardDirection.z << ")" << std::endl;
+        // std::cout << "DEBUG: Player yaw updated to: " << yawDegrees << " degrees" << std::endl;
+        // std::cout << "DEBUG: Player forward direction: (" << playerForwardDirection.x << ", " 
+        //           << playerForwardDirection.y << ", " << playerForwardDirection.z << ")" << std::endl;
     }
     
     if (playerArrow) {
@@ -822,7 +758,7 @@ void Minimap::renderCenterIndicator() {
     
     // Use the arrow shader for 2D rendering with color support
     if (!arrowShader) {
-        std::cout << "DEBUG: arrowShader is NULL in renderCenterIndicator" << std::endl;
+        // std::cout << "DEBUG: arrowShader is NULL in renderCenterIndicator" << std::endl;
         return;
     }
     
@@ -846,7 +782,7 @@ void Minimap::renderCenterIndicator() {
     // Create temporary mesh
     Mesh tempMesh;
     if (!tempMesh.createMesh(vertices, indices)) {
-        std::cout << "DEBUG: Failed to create arrow mesh" << std::endl;
+        // std::cout << "DEBUG: Failed to create arrow mesh" << std::endl;
         return;
     }
     
@@ -910,20 +846,18 @@ void Minimap::renderCenterIndicator() {
     static int debugCount = 0;
     debugCount++;
     if (debugCount % 5 == 0) { // Very frequent debug
-        std::cout << "=== ARROW ROTATION DEBUG ===" << std::endl;
-        std::cout << "Player yaw: " << playerYaw << " degrees" << std::endl;
-        std::cout << "Rotation angle: " << rotationAngle << " degrees" << std::endl;
-        std::cout << "Player forward direction: (" << playerForwardDirection.x << ", " << playerForwardDirection.y << ", " << playerForwardDirection.z << ")" << std::endl;
-        std::cout << "Expected: Arrow should point in the direction the player is facing" << std::endl;
+        // Debug output removed
+        // std::cout << "Player forward direction: (" << playerForwardDirection.x << ", " << playerForwardDirection.y << ", " << playerForwardDirection.z << ")" << std::endl;
+        // std::cout << "Expected: Arrow should point in the direction the player is facing" << std::endl;
         
         // Test arrow direction calculation
         float expectedRotation = atan2(playerForwardDirection.x, playerForwardDirection.z) * 180.0f / 3.14159f + 180.0f + 180.0f;
         while (expectedRotation < 0.0f) expectedRotation += 360.0f;
         while (expectedRotation >= 360.0f) expectedRotation -= 360.0f;
-        std::cout << "Expected rotation: " << expectedRotation << " degrees" << std::endl;
-        std::cout << "Actual rotation: " << rotationAngle << " degrees" << std::endl;
-        std::cout << "Difference: " << (rotationAngle - expectedRotation) << " degrees" << std::endl;
-        std::cout << "Forward vector: (" << playerForwardDirection.x << ", " << playerForwardDirection.z << ")" << std::endl;
+        // std::cout << "Expected rotation: " << expectedRotation << " degrees" << std::endl;
+        // std::cout << "Actual rotation: " << rotationAngle << " degrees" << std::endl;
+        // std::cout << "Difference: " << (rotationAngle - expectedRotation) << " degrees" << std::endl;
+        // std::cout << "Forward vector: (" << playerForwardDirection.x << ", " << playerForwardDirection.z << ")" << std::endl;
     }
 }
 
@@ -943,10 +877,10 @@ bool Minimap::isEntityInMinimapScope(const GameObject* entity) const {
     );
     
     if (!withinScope) {
-        std::cout << "WARNING: Entity " << entity->getName() << " at (" 
-                  << entityPos.x << ", " << entityPos.z << ") is outside minimap scope [" 
-                  << orthoLeft << " to " << orthoRight << ", " 
-                  << orthoBottom << " to " << orthoTop << "]" << std::endl;
+        // std::cout << "WARNING: Entity " << entity->getName() << " at (" 
+        //           << entityPos.x << ", " << entityPos.z << ") is outside minimap scope [" 
+        //           << orthoLeft << " to " << orthoRight << ", " 
+        //           << orthoBottom << " to " << orthoTop << "]" << std::endl;
     }
     
     return withinScope;

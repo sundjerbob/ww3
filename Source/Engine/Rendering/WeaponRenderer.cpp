@@ -19,18 +19,15 @@ WeaponRenderer::~WeaponRenderer() {
 }
 
 bool WeaponRenderer::initialize(int width, int height) {
-    std::cout << "Initializing WeaponRenderer..." << std::endl;
     
     windowWidth = width;
     windowHeight = height;
     
     if (!initializeOpenGL()) {
-        std::cerr << "Failed to initialize OpenGL for WeaponRenderer" << std::endl;
         return false;
     }
     
     if (!loadWeaponShader()) {
-        std::cerr << "Failed to load weapon shader" << std::endl;
         return false;
     }
     
@@ -40,14 +37,12 @@ bool WeaponRenderer::initialize(int width, int height) {
     updateProjectionMatrix();
     
     isInitialized = true;
-    std::cout << "WeaponRenderer initialized successfully" << std::endl;
     return true;
 }
 
 void WeaponRenderer::cleanup() {
     if (!isInitialized) return;
     
-    std::cout << "Cleaning up WeaponRenderer..." << std::endl;
     
     weaponShader.reset();
     weaponTexture.reset();
@@ -97,7 +92,6 @@ void WeaponRenderer::renderWeaponMesh(const Mesh& mesh,
 
     
     if (!isInitialized || !weaponShader) {
-        std::cerr << "WeaponRenderer not properly initialized" << std::endl;
         return;
     }
     
@@ -169,7 +163,6 @@ void WeaponRenderer::renderWeaponTriangles(const Mesh& mesh,
                                           const std::vector<unsigned int>& triangleIndices,
                                           bool useTexture) const {
     if (!isInitialized || !weaponShader) {
-        std::cerr << "WeaponRenderer not properly initialized" << std::endl;
         return;
     }
     
@@ -225,7 +218,6 @@ const Mat4& WeaponRenderer::getProjectionMatrix() const {
 
 bool WeaponRenderer::loadWeaponTexture(const std::string& texturePath) {
     if (!weaponTexture) {
-        std::cerr << "Weapon texture not initialized" << std::endl;
         return false;
     }
     
@@ -243,11 +235,9 @@ bool WeaponRenderer::loadWeaponShader() {
     
     if (!weaponShader->loadFromFiles("Resources/Shaders/weapon_vertex.glsl", 
                                     "Resources/Shaders/weapon_fragment.glsl")) {
-        std::cerr << "Failed to load weapon shader files" << std::endl;
         return false;
     }
     
-    std::cout << "Weapon shader loaded successfully" << std::endl;
     return true;
 }
 

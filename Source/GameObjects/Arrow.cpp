@@ -48,8 +48,6 @@ void Arrow::create2DArrowMesh() {
     float length = arrowLength * arrowSize;
     float width = arrowWidth * arrowSize;
     
-    std::cout << "Creating arrow mesh with length: " << length << ", width: " << width << std::endl;
-    std::cout << "Arrow vertices will span from -" << width << " to +" << width << " in X, and -" << length * 0.8f << " to +" << length * 0.5f << " in Z" << std::endl;
     
     std::vector<float> vertices = {
         // Simple arrow shape pointing forward - Y = 0 for flat 2D appearance
@@ -67,9 +65,7 @@ void Arrow::create2DArrowMesh() {
     // Create mesh
     mesh = std::make_unique<Mesh>();
     if (!mesh->createMesh(vertices, indices)) {
-        std::cerr << "Failed to create 2D arrow mesh for '" << getName() << "'" << std::endl;
     } else {
-        std::cout << "Created 2D arrow mesh for '" << getName() << "' (size: " << arrowSize << ")" << std::endl;
     }
 }
 

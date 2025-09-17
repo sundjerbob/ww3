@@ -5,7 +5,7 @@
 #include "MaterialLoader.h"
 #include <fstream>
 #include <sstream>
-#include <iostream>
+#include <iostream                                                                                                                                                                                                                                 >
 #include <algorithm>
 
 namespace Engine {
@@ -60,8 +60,8 @@ MaterialLibrary MaterialLoader::loadMTL(const std::string& mtlFilePath) {
     for (const auto& materialName : materialLibrary.getMaterialNames()) {
         const Material* mat = materialLibrary.getMaterial(materialName);
         if (mat) {
-            std::cout << "Material '" << materialName << "' loaded with color ("
-                      << mat->diffuse.x << ", " << mat->diffuse.y << ", " << mat->diffuse.z << ")" << std::endl;
+            // std::cout << "Material '" << materialName << "' loaded with color ("
+            //           << mat->diffuse.x << ", " << mat->diffuse.y << ", " << mat->diffuse.z << ")" << std::endl;
         }
     }
     
@@ -110,7 +110,6 @@ void MaterialLoader::parseMTLLine(const std::string& line, Material& currentMate
         std::string colorStr;
         std::getline(iss, colorStr);
         currentMaterial.emissive = parseColor(colorStr);
-        
     } else if (command == "Ns") {
         // Shininess
         std::string valueStr;

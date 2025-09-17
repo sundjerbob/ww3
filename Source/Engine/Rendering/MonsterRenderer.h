@@ -41,12 +41,17 @@ private:
 
     // Monster-specific shaders
     std::unique_ptr<Shader> monsterShader;
+    // std::unique_ptr<Shader> healthBarShader;  // REMOVED: Using new texture-based system
     std::unique_ptr<Texture> monsterTexture;
     
     // Rendering state
     bool isInitialized;
     bool useTextureRendering;
     float textureStrength;
+    
+    // Health bar quad geometry - REMOVED: Using new texture-based system
+    // unsigned int healthBarVAO;
+    // unsigned int healthBarVBO;
 
 public:
     MonsterRenderer();
@@ -83,6 +88,12 @@ public:
                                const Vec3& color,
                                const std::vector<unsigned int>& triangleIndices,
                                bool useTexture = true) const;
+    
+    // Health bar rendering - REMOVED: Using new texture-based system
+    // void renderHealthBar(const Vec3& monsterPosition, float healthPercentage, const Camera& camera) const;
+    // void setupHealthBarQuad();
+    // void cleanupHealthBarQuad();
+    // bool loadHealthBarShader();
 
     float getAspectRatio() const override;
     const Mat4& getProjectionMatrix() const override;

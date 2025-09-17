@@ -12,7 +12,8 @@ namespace Engine {
 
 MonsterRenderer::MonsterRenderer()
     : windowWidth(800), windowHeight(600), isInitialized(false), 
-      useTextureRendering(true), textureStrength(0.8f) {}
+      useTextureRendering(true), textureStrength(0.8f) {
+}
 
 MonsterRenderer::~MonsterRenderer() {
     cleanup();
@@ -34,10 +35,18 @@ bool MonsterRenderer::initialize(int width, int height) {
         return false;
     }
     
+    // if (!loadHealthBarShader()) {  // REMOVED: Using new texture-based system
+    //     std::cerr << "Failed to load health bar shader" << std::endl;
+    //     return false;
+    // }
+    
     // Initialize texture
     monsterTexture = std::make_unique<Texture>();
     
     updateProjectionMatrix();
+    
+    // Setup health bar quad - REMOVED: Using new texture-based system
+    // setupHealthBarQuad();
     
     isInitialized = true;
     std::cout << "MonsterRenderer initialized successfully" << std::endl;
@@ -49,7 +58,11 @@ void MonsterRenderer::cleanup() {
     
     std::cout << "Cleaning up MonsterRenderer..." << std::endl;
     
+    // Cleanup health bar quad - REMOVED: Using new texture-based system
+    // cleanupHealthBarQuad();
+    
     monsterShader.reset();
+    // healthBarShader.reset();  // REMOVED
     monsterTexture.reset();
     
     isInitialized = false;
@@ -250,10 +263,22 @@ bool MonsterRenderer::loadMonsterShader() {
     return true;
 }
 
+// Health bar shader loading - REMOVED: Using new texture-based system
+// bool MonsterRenderer::loadHealthBarShader() { ... }
+
 void MonsterRenderer::updateProjectionMatrix() {
     // Use perspective projection for 3D world-space monster rendering
     float aspectRatio = getAspectRatio();
     projectionMatrix = Engine::perspective(45.0f, aspectRatio, 0.1f, 100.0f);
 }
+
+// Health bar quad setup - REMOVED: Using new texture-based system
+// void MonsterRenderer::setupHealthBarQuad() { ... }
+
+// Health bar quad cleanup - REMOVED: Using new texture-based system
+// void MonsterRenderer::cleanupHealthBarQuad() { ... }
+
+// Health bar rendering - REMOVED: Using new texture-based system
+// void MonsterRenderer::renderHealthBar(const Vec3& monsterPosition, float healthPercentage, const Camera& camera) const { ... }
 
 } // namespace Engine

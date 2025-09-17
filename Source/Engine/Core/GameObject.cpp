@@ -21,17 +21,14 @@ GameObject::~GameObject() {
 
 bool GameObject::initialize() {
     if (isInitialized) {
-        std::cout << "GameObject '" << name << "' already initialized" << std::endl;
         return true;
     }
     
-    std::cout << "Initializing GameObject '" << name << "'..." << std::endl;
     
     // Setup mesh; shaders are owned/selected by the renderer implementation
     setupMesh();
     
     isInitialized = true;
-    std::cout << "GameObject '" << name << "' initialized successfully" << std::endl;
     return true;
 }
 
@@ -56,7 +53,6 @@ void GameObject::render(const Renderer& renderer, const Camera& camera) {
     }
     
     if (!selectedRenderer) {
-        std::cerr << "Warning: No renderer available for GameObject '" << name << "'" << std::endl;
         return;
     }
 
@@ -67,22 +63,39 @@ void GameObject::render(const Renderer& renderer, const Camera& camera) {
 void GameObject::cleanup() {
     if (!isInitialized) return;
     
-    std::cout << "Cleaning up GameObject '" << name << "'..." << std::endl;
     
     mesh.reset();
     
     isInitialized = false;
-    std::cout << "GameObject '" << name << "' cleanup complete" << std::endl;
 }
 
 Mat4 GameObject::getModelMatrix() const {
-    // Create transformation matrix: scale * rotation * translation
+    // FIXED: Correct transformation order: Translation * Rotation * Scale
     Mat4 model = Mat4(); // Identity matrix
     
-    // Apply translation
-    model = Engine::translate(model, position);
+    // DEBUG: Add extensive logging for transformation steps
+    static int debugCount = 0;
+    debugCount++;
+    bool shouldDebug = (debugCount % 300 == 0); // Every 5 seconds
     
-    // Apply rotation (convert degrees to radians)
+    if (shouldDebug) {
+        std::cout << "=== GETMODELMATRIX DEBUG (FIXED ORDER) ===" << std::endl;
+        std::cout << "Object name: " << name << std::endl;
+        std::cout << "Raw position: (" << position.x << ", " << position.y << ", " << position.z << ")" << std::endl;
+        std::cout << "Raw rotation: (" << rotation.x << ", " << rotation.y << ", " << rotation.z << ") degrees" << std::endl;
+        std::cout << "Raw scale: (" << scale.x << ", " << scale.y << ", " << scale.z << ")" << std::endl;
+    }
+    
+    // STEP 1: Apply scale first
+    Vec3 scaleVector = scale;
+    Mat4 scaleMatrix = Engine::scale(scaleVector);
+    model = model * scaleMatrix;
+    
+    if (shouldDebug) {
+        std::cout << "After scale - matrix position: (" << model.m[12] << ", " << model.m[13] << ", " << model.m[14] << ")" << std::endl;
+    }
+    
+    // STEP 2: Apply rotation (convert degrees to radians)
     if (rotation.x != 0.0f) {
         Mat4 rotX = Engine::rotateX(rotation.x * 3.14159f / 180.0f);
         model = model * rotX;
@@ -90,16 +103,23 @@ Mat4 GameObject::getModelMatrix() const {
     if (rotation.y != 0.0f) {
         Mat4 rotY = Engine::rotateY(rotation.y * 3.14159f / 180.0f);
         model = model * rotY;
+        if (shouldDebug) {
+            std::cout << "After Y rotation (" << rotation.y << " degrees) - matrix position: (" << model.m[12] << ", " << model.m[13] << ", " << model.m[14] << ")" << std::endl;
+        }
     }
     if (rotation.z != 0.0f) {
         Mat4 rotZ = Engine::rotateZ(rotation.z * 3.14159f / 180.0f);
         model = model * rotZ;
     }
     
-    // Apply scale
-    Vec3 scaleVector = scale;
-    Mat4 scaleMatrix = Engine::scale(scaleVector);
-    model = model * scaleMatrix;
+    // STEP 3: Apply translation last
+    model = Engine::translate(model, position);
+    
+    if (shouldDebug) {
+        std::cout << "After translation - final position: (" << model.m[12] << ", " << model.m[13] << ", " << model.m[14] << ")" << std::endl;
+        std::cout << "Position difference from raw: (" << (model.m[12] - position.x) << ", " << (model.m[13] - position.y) << ", " << (model.m[14] - position.z) << ")" << std::endl;
+        std::cout << "============================" << std::endl;
+    }
     
     return model;
 }
@@ -110,7 +130,6 @@ void GameObject::updateTransform() {
 
 void GameObject::setupMesh() {
     // Base implementation - derived classes should override
-    std::cout << "Warning: GameObject '" << name << "' using default mesh setup" << std::endl;
 }
 
 // Parent-child system implementation

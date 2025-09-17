@@ -19,12 +19,10 @@ RendererFactory& RendererFactory::getInstance() {
 bool RendererFactory::initialize(int width, int height) {
     if (isInitialized) return true;
     
-    std::cout << "Initializing RendererFactory..." << std::endl;
     
     // Create and initialize Basic renderer
     auto basicRenderer = std::make_unique<BasicRenderer>();
     if (!basicRenderer->initialize(width, height)) {
-        std::cerr << "Failed to initialize BasicRenderer" << std::endl;
         return false;
     }
     renderers[RendererType::Basic] = std::move(basicRenderer);
@@ -32,7 +30,6 @@ bool RendererFactory::initialize(int width, int height) {
     // Create and initialize Crosshair renderer
     auto crosshairRenderer = std::make_unique<CrosshairRenderer>();
     if (!crosshairRenderer->initialize(width, height)) {
-        std::cerr << "Failed to initialize CrosshairRenderer" << std::endl;
         return false;
     }
     renderers[RendererType::Crosshair] = std::move(crosshairRenderer);
@@ -40,7 +37,6 @@ bool RendererFactory::initialize(int width, int height) {
     // Create and initialize Weapon renderer
     auto weaponRenderer = std::make_unique<WeaponRenderer>();
     if (!weaponRenderer->initialize(width, height)) {
-        std::cerr << "Failed to initialize WeaponRenderer" << std::endl;
         return false;
     }
     renderers[RendererType::Weapon] = std::move(weaponRenderer);
@@ -48,7 +44,6 @@ bool RendererFactory::initialize(int width, int height) {
     // Create and initialize Monster renderer
     auto monsterRenderer = std::make_unique<MonsterRenderer>();
     if (!monsterRenderer->initialize(width, height)) {
-        std::cerr << "Failed to initialize MonsterRenderer" << std::endl;
         return false;
     }
     renderers[RendererType::Monster] = std::move(monsterRenderer);
@@ -56,7 +51,6 @@ bool RendererFactory::initialize(int width, int height) {
     // Create and initialize Lighting renderer
     auto lightingRenderer = std::make_unique<LightingRenderer>();
     if (!lightingRenderer->initialize(width, height)) {
-        std::cerr << "Failed to initialize LightingRenderer" << std::endl;
         return false;
     }
     renderers[RendererType::Lighting] = std::move(lightingRenderer);
@@ -64,7 +58,6 @@ bool RendererFactory::initialize(int width, int height) {
     // Create and initialize Simple Text renderer
     auto textRenderer = std::make_unique<SimpleTextRenderer>();
     if (!textRenderer->initialize(width, height)) {
-        std::cerr << "Failed to initialize SimpleTextRenderer" << std::endl;
         return false;
     }
     renderers[RendererType::Text] = std::move(textRenderer);
@@ -72,20 +65,17 @@ bool RendererFactory::initialize(int width, int height) {
     // Create and initialize Water renderer
     auto waterRenderer = std::make_unique<WaterRenderer>();
     if (!waterRenderer->initialize(width, height)) {
-        std::cerr << "Failed to initialize WaterRenderer" << std::endl;
         return false;
     }
     renderers[RendererType::Water] = std::move(waterRenderer);
     
     isInitialized = true;
-    std::cout << "RendererFactory initialized successfully" << std::endl;
     return true;
 }
 
 void RendererFactory::cleanup() {
     if (!isInitialized) return;
     
-    std::cout << "Cleaning up RendererFactory..." << std::endl;
     
     for (auto& pair : renderers) {
         if (pair.second) {
@@ -98,7 +88,6 @@ void RendererFactory::cleanup() {
 
 Renderer* RendererFactory::getRenderer(RendererType type) {
     if (!isInitialized) {
-        std::cerr << "RendererFactory not initialized!" << std::endl;
         return nullptr;
     }
     
@@ -107,7 +96,6 @@ Renderer* RendererFactory::getRenderer(RendererType type) {
         return it->second.get();
     }
     
-    std::cerr << "Renderer type not found, returning default renderer" << std::endl;
     return getDefaultRenderer();
 }
 

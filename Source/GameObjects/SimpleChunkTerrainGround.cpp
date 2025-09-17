@@ -13,7 +13,6 @@ namespace Engine {
 SimpleChunkTerrainGround::SimpleChunkTerrainGround(const std::string& name, float groundSize, const Vec3& groundColor)
     : Ground(name, groundSize, groundColor), isInitialized(false), renderDistance(8), playerPosition(0, 0, 0) {
     
-    std::cout << "SimpleChunkTerrainGround: Created - Name: " << name << ", Render Distance: " << renderDistance << std::endl;
     
     // Set up terrain parameters for natural-looking terrain with Perlin noise
     SimpleChunkTerrainParams params;
@@ -28,14 +27,11 @@ SimpleChunkTerrainGround::SimpleChunkTerrainGround(const std::string& name, floa
     params.chunkResolution = 32;       // 32x32 vertices per chunk
     
     terrainGenerator.setParams(params);
-    std::cout << "SimpleChunkTerrainGround: Terrain parameters set" << std::endl;
 }
 
 bool SimpleChunkTerrainGround::initialize() {
-    std::cout << "SimpleChunkTerrainGround: Initializing..." << std::endl;
     
     if (!Ground::initialize()) {
-        std::cout << "SimpleChunkTerrainGround: Failed to initialize base Ground" << std::endl;
         return false;
     }
     
@@ -43,7 +39,6 @@ bool SimpleChunkTerrainGround::initialize() {
     updateChunksForPlayer(Vec3(0, 0, 0));
     
     isInitialized = true;
-    std::cout << "SimpleChunkTerrainGround: Initialization complete" << std::endl;
     return true;
 }
 
@@ -56,7 +51,6 @@ void SimpleChunkTerrainGround::render(const Renderer& renderer, const Camera& ca
         return;
     }
     
-    std::cout << "SimpleChunkTerrainGround: Rendering " << chunkMeshes.size() << " chunks..." << std::endl;
     
     // Render the terrain mesh with height-based coloring
     const BasicRenderer* basicRenderer = dynamic_cast<const BasicRenderer*>(&renderer);
@@ -87,7 +81,6 @@ void SimpleChunkTerrainGround::updateChunksForPlayer(const Vec3& playerPos) {
     if (playerPos.x < 0) playerChunkX--;
     if (playerPos.z < 0) playerChunkZ--;
     
-    std::cout << "SimpleChunkTerrainGround: Player at chunk (" << playerChunkX << ", " << playerChunkZ << ")" << std::endl;
     
     // Generate chunks in render distance
     for (int z = playerChunkZ - renderDistance; z <= playerChunkZ + renderDistance; z++) {
@@ -107,7 +100,6 @@ void SimpleChunkTerrainGround::generateChunk(int chunkX, int chunkZ) {
         return;
     }
     
-    std::cout << "SimpleChunkTerrainGround: Generating chunk (" << chunkX << ", " << chunkZ << ")" << std::endl;
     
     // Generate chunk data
     terrainGenerator.generateChunkMesh(chunkX, chunkZ);
@@ -125,9 +117,8 @@ void SimpleChunkTerrainGround::createChunkMesh(const TerrainChunkData& chunkData
     auto mesh = std::make_unique<Mesh>();
     if (mesh->createMeshWithNormals(chunkData.vertices, chunkData.indices)) {
         chunkMeshes[key] = std::move(mesh);
-        std::cout << "SimpleChunkTerrainGround: Created mesh for chunk (" << chunkX << ", " << chunkZ << ")" << std::endl;
     } else {
-        std::cout << "SimpleChunkTerrainGround: FAILED to create mesh for chunk (" << chunkX << ", " << chunkZ << ")" << std::endl;
+        // std::cout << "SimpleChunkTerrainGround: FAILED to create mesh for chunk (" << chunkX << ", " << chunkZ << ")" << std::endl;
     }
 }
 
@@ -152,7 +143,7 @@ bool SimpleChunkTerrainGround::isChunkInRange(int chunkX, int chunkZ, const Vec3
 }
 
 void SimpleChunkTerrainGround::setTerrainParams(const SimpleChunkTerrainParams& params) {
-    std::cout << "SimpleChunkTerrainGround: Setting new terrain parameters" << std::endl;
+    // std::cout << "SimpleChunkTerrainGround: Setting new terrain parameters" << std::endl;
     terrainGenerator.setParams(params);
     clearAllChunks(); // Clear existing chunks to regenerate with new parameters
 }
@@ -166,7 +157,7 @@ float SimpleChunkTerrainGround::getHeightAt(float worldX, float worldZ) const {
 }
 
 void SimpleChunkTerrainGround::clearAllChunks() {
-    std::cout << "SimpleChunkTerrainGround: Clearing all chunks" << std::endl;
+    // std::cout << "SimpleChunkTerrainGround: Clearing all chunks" << std::endl;
     chunkMeshes.clear();
     terrainGenerator.clearAllChunks();
 }

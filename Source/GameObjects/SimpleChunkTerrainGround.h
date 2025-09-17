@@ -18,7 +18,7 @@ namespace Engine {
 class SimpleChunkTerrainGround : public Ground {
 private:
     SimpleChunkTerrainGenerator terrainGenerator;
-    std::unordered_map<std::string, std::unique_ptr<Mesh>> chunkMeshes;
+    std::unordered_map<std::string, std::unique_ptr<Engine::Mesh>> chunkMeshes;
     bool isInitialized;
     
     // Terrain parameters

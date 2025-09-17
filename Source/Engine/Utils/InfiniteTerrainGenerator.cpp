@@ -227,7 +227,6 @@ void InfiniteTerrainGenerator::setTerrainParams(const TerrainParams& params) {
 
 void InfiniteTerrainGenerator::forceRegenerateAllChunks() {
     // Clear all existing chunks to force regeneration with new parameters
-    std::cout << "InfiniteTerrainGenerator: Force regenerating all chunks..." << std::endl;
     chunks.clear();
     chunkLoadQueue = std::queue<ChunkCoord>();  // Clear load queue
     chunkUnloadQueue = std::queue<ChunkCoord>(); // Clear unload queue
@@ -236,11 +235,9 @@ void InfiniteTerrainGenerator::forceRegenerateAllChunks() {
     lastPlayerPosition = Vec3(0.0f, 0.0f, 0.0f);
     lastPlayerChunk = ChunkCoord(0, 0);
     
-    std::cout << "InfiniteTerrainGenerator: All chunks cleared, ready for regeneration" << std::endl;
 }
 
 void InfiniteTerrainGenerator::forceMemoryCleanup() {
-    std::cout << "InfiniteTerrainGenerator: Force memory cleanup..." << std::endl;
     
     // Force cleanup of old chunks
     cleanupOldChunks();
@@ -253,7 +250,6 @@ void InfiniteTerrainGenerator::forceMemoryCleanup() {
         chunkUnloadQueue.pop();
     }
     
-    std::cout << "InfiniteTerrainGenerator: Memory cleanup completed. Chunks: " << chunks.size() << std::endl;
 }
 
 void InfiniteTerrainGenerator::setMemoryLimits(int maxChunks, int renderDist) {
@@ -262,8 +258,6 @@ void InfiniteTerrainGenerator::setMemoryLimits(int maxChunks, int renderDist) {
     loadDistance = renderDist * 2;
     unloadDistance = renderDist * 3;
     
-    std::cout << "InfiniteTerrainGenerator: Memory limits updated - Max chunks: " << maxChunks 
-              << ", Render distance: " << renderDist << std::endl;
 }
 
 const TerrainParams& InfiniteTerrainGenerator::getTerrainParams() const {
@@ -334,7 +328,6 @@ void InfiniteTerrainGenerator::cleanupOldChunks() {
     }
     
     if (removed > 0) {
-        std::cout << "Memory cleanup: Removed " << removed << " old chunks. Current chunks: " << chunks.size() << std::endl;
     }
 }
 
@@ -362,13 +355,6 @@ std::vector<ChunkCoord> InfiniteTerrainGenerator::getChunksInRange(const Vec3& c
 }
 
 void InfiniteTerrainGenerator::printStatistics() const {
-    std::cout << "=== Infinite Terrain Statistics ===" << std::endl;
-    std::cout << "Loaded chunks: " << getLoadedChunkCount() << std::endl;
-    std::cout << "Queued for loading: " << getQueuedLoadCount() << std::endl;
-    std::cout << "Queued for unloading: " << getQueuedUnloadCount() << std::endl;
-    std::cout << "Player chunk: (" << lastPlayerChunk.x << ", " << lastPlayerChunk.z << ")" << std::endl;
-    std::cout << "Player position: (" << lastPlayerPosition.x << ", " << lastPlayerPosition.y << ", " << lastPlayerPosition.z << ")" << std::endl;
-    std::cout << "===================================" << std::endl;
 }
 
 } // namespace Engine

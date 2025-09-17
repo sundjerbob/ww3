@@ -19,7 +19,6 @@ LightManager::~LightManager() {
 
 void LightManager::addLight(std::shared_ptr<Light> light) {
     if (!light) {
-        std::cerr << "Warning: Attempted to add null light" << std::endl;
         return;
     }
     
@@ -27,7 +26,6 @@ void LightManager::addLight(std::shared_ptr<Light> light) {
     
     // Check if light already exists
     if (hasLight(lightName)) {
-        std::cout << "Light '" << lightName << "' already exists, replacing..." << std::endl;
         removeLight(lightName);
     }
     
@@ -39,9 +37,7 @@ void LightManager::addLight(std::shared_ptr<Light> light) {
                 if (directionalLights.size() < MAX_DIRECTIONAL_LIGHTS) {
                     directionalLights.push_back(directionalLight);
                     lightMap[lightName] = light;
-                    std::cout << "Added directional light: " << lightName << std::endl;
                 } else {
-                    std::cerr << "Warning: Maximum directional lights reached (" << MAX_DIRECTIONAL_LIGHTS << ")" << std::endl;
                 }
             }
             break;
@@ -52,9 +48,7 @@ void LightManager::addLight(std::shared_ptr<Light> light) {
                 if (pointLights.size() < MAX_POINT_LIGHTS) {
                     pointLights.push_back(pointLight);
                     lightMap[lightName] = light;
-                    std::cout << "Added point light: " << lightName << std::endl;
                 } else {
-                    std::cerr << "Warning: Maximum point lights reached (" << MAX_POINT_LIGHTS << ")" << std::endl;
                 }
             }
             break;
@@ -65,9 +59,7 @@ void LightManager::addLight(std::shared_ptr<Light> light) {
                 if (ambientLights.size() < MAX_AMBIENT_LIGHTS) {
                     ambientLights.push_back(ambientLight);
                     lightMap[lightName] = light;
-                    std::cout << "Added ambient light: " << lightName << std::endl;
                 } else {
-                    std::cerr << "Warning: Maximum ambient lights reached (" << MAX_AMBIENT_LIGHTS << ")" << std::endl;
                 }
             }
             break;
@@ -118,7 +110,6 @@ void LightManager::removeLight(const std::string& lightName) {
         }
     }
     
-    std::cout << "Removed light: " << lightName << std::endl;
 }
 
 void LightManager::clearAllLights() {
@@ -126,7 +117,6 @@ void LightManager::clearAllLights() {
     pointLights.clear();
     ambientLights.clear();
     lightMap.clear();
-    std::cout << "Cleared all lights" << std::endl;
 }
 
 std::shared_ptr<Light> LightManager::getLight(const std::string& lightName) {
@@ -183,7 +173,6 @@ void LightManager::setupDefaultLighting() {
     auto sun = std::make_shared<DirectionalLight>("Sun", Vec3(0.0f, -1.0f, 0.0f), Vec3(1.0f, 0.95f, 0.8f), 1.0f);
     addLight(sun);
     
-    std::cout << "Setup default lighting (ambient + sun)" << std::endl;
 }
 
 void LightManager::setupDayLighting() {
@@ -197,7 +186,6 @@ void LightManager::setupDayLighting() {
     auto sun = std::make_shared<DirectionalLight>("Sun", Vec3(0.0f, -1.0f, 0.0f), Vec3(1.0f, 0.95f, 0.8f), 1.2f);
     addLight(sun);
     
-    std::cout << "Setup day lighting" << std::endl;
 }
 
 void LightManager::setupNightLighting() {
@@ -211,7 +199,6 @@ void LightManager::setupNightLighting() {
     auto moon = std::make_shared<DirectionalLight>("Moon", Vec3(0.0f, -1.0f, 0.0f), Vec3(0.7f, 0.7f, 1.0f), 0.3f);
     addLight(moon);
     
-    std::cout << "Setup night lighting" << std::endl;
 }
 
 void LightManager::setupIndoorLighting() {
@@ -231,7 +218,6 @@ void LightManager::setupIndoorLighting() {
     addLight(light2);
     addLight(light3);
     
-    std::cout << "Setup indoor lighting (ambient + 3 point lights)" << std::endl;
 }
 
 } // namespace Engine

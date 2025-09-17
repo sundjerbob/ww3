@@ -3,7 +3,8 @@
  */
 
 #include "Player.h"
-#include "HealthBar.h"
+// #include "HealthBar.h"  // REMOVED: Using new texture-based health bar system
+#include "../Engine/Rendering/TextureHealthBar.h"
 #include "../Engine/Core/Scene.h"
 #include "../Engine/Rendering/Renderer.h"
 #include <iostream>
@@ -17,6 +18,7 @@ Player::Player(const std::string& name)
       maxHealth(100.0f),
       armor(0.0f),
       maxArmor(50.0f),
+      textureHealthBar(nullptr),  // NEW: Using texture-based system
       showHealthBar(true),
       damageFlashTimer(0.0f),
       originalColor(0.2f, 0.6f, 1.0f),  // Blue color for player
@@ -36,7 +38,7 @@ bool Player::initialize() {
     
     std::cout << "=== INITIALIZING PLAYER: " << getName() << " ===" << std::endl;
     
-    // Create health bar
+    // Create health bar - NEW: Using texture-based system
     if (showHealthBar) {
         createHealthBar();
         std::cout << "Health bar created for player: " << getName() << std::endl;
@@ -77,9 +79,9 @@ void Player::render(const Renderer& renderer, const Camera& camera) {
     // Render the player using the basic renderer
     GameObject::render(renderer, camera);
     
-    // Render health bar if available
-    if (healthBar && showHealthBar && healthBar->isVisible()) {
-        healthBar->render(renderer, camera);
+    // Render health bar if available - NEW: Using texture-based system
+    if (textureHealthBar && showHealthBar && textureHealthBar->getActive()) {
+        textureHealthBar->render(getPosition(), camera);
     }
 }
 
@@ -116,10 +118,10 @@ void Player::takeDamage(float damage, GameObject* attacker) {
     flashDamage();
     lastDamageTime = 0.0f; // Reset regeneration timer
     
-    // Update health bar immediately
-    if (healthBar && showHealthBar) {
+    // Update health bar immediately - NEW: Using texture-based system
+    if (textureHealthBar && showHealthBar) {
         try {
-            healthBar->setHealth(health, maxHealth);
+            textureHealthBar->setHealth(health, maxHealth);
         } catch (const std::exception& e) {
             std::cout << "Error updating player health bar: " << e.what() << std::endl;
         }
@@ -150,10 +152,10 @@ void Player::heal(float amount) {
     if (actualHeal > 0.0f) {
         std::cout << "Player " << getName() << " healed for " << actualHeal << " health. Health: " << health << "/" << maxHealth << std::endl;
         
-        // Update health bar
-        if (healthBar && showHealthBar) {
+        // Update health bar - NEW: Using texture-based system
+        if (textureHealthBar && showHealthBar) {
             try {
-                healthBar->setHealth(health, maxHealth);
+                textureHealthBar->setHealth(health, maxHealth);
             } catch (const std::exception& e) {
                 std::cout << "Error updating player health bar: " << e.what() << std::endl;
             }
@@ -181,17 +183,17 @@ void Player::die() {
     // Mark player as inactive
     setActive(false);
     
-    // HEALTH BAR CLEANUP: Use safer approach
-    if (healthBar) {
+    // HEALTH BAR CLEANUP: Use safer approach - NEW: Using texture-based system
+    if (textureHealthBar) {
         std::cout << "Player " << getName() << " died! Cleaning up health bar..." << std::endl;
         
         try {
             // Mark health bar as inactive so it won't render
-            healthBar->setActive(false);
+            textureHealthBar->setActive(false);
             std::cout << "Health bar marked as inactive" << std::endl;
             
             // Clear the health bar reference to prevent further updates
-            healthBar.reset();
+            textureHealthBar.reset();
             std::cout << "Health bar reference cleared" << std::endl;
         } catch (const std::exception& e) {
             std::cout << "Error cleaning up health bar: " << e.what() << std::endl;
@@ -225,25 +227,22 @@ void Player::setArmor(float newArmor) {
 }
 
 void Player::createHealthBar() {
-    if (healthBar) return; // Already created
+    if (textureHealthBar) return; // Already created
     
     std::cout << "Creating health bar for player: " << getName() << std::endl;
     
-    std::string healthBarName = getName() + "_HealthBar";
-    healthBar = std::make_unique<HealthBar>(healthBarName, this);
+    // Create texture-based health bar - NEW: Using texture-based system
+    textureHealthBar = std::make_unique<TextureHealthBar>(6.0f, 1.0f, 5.0f);
     
     // Configure health bar
-    healthBar->setHealth(health, maxHealth);
-    healthBar->setBarSize(6.0f, 1.0f); // Larger health bar for player
-    healthBar->setOffsetY(5.0f); // Position higher above player
-    healthBar->setBackgroundColor(Vec3(0.2f, 0.2f, 0.2f));
-    healthBar->setBorderColor(Vec3(1.0f, 1.0f, 1.0f));
-    healthBar->setHealthTransitionSpeed(10.0f);
+    textureHealthBar->setHealth(health, maxHealth);
+    textureHealthBar->setColors(Vec3(0.2f, 0.2f, 0.2f), Vec3(0.0f, 1.0f, 0.0f), Vec3(1.0f, 1.0f, 1.0f));
+    textureHealthBar->setAlpha(0.8f);
     
     // Initialize the health bar
-    if (!healthBar->initialize()) {
+    if (!textureHealthBar->initialize()) {
         std::cerr << "Failed to initialize health bar for player: " << getName() << std::endl;
-        healthBar.reset();
+        textureHealthBar.reset();
         return;
     }
     
@@ -251,17 +250,17 @@ void Player::createHealthBar() {
 }
 
 void Player::updateHealthBar() {
-    if (!healthBar || !showHealthBar) return;
+    if (!textureHealthBar || !showHealthBar) return;
     
-    // Update health bar with current health
-    healthBar->setHealth(health, maxHealth);
+    // Update health bar with current health - NEW: Using texture-based system
+    textureHealthBar->setHealth(health, maxHealth);
     
     // Make health bar pulse when health is low
     float healthPercentage = getHealthPercentage();
     if (healthPercentage < 0.3f) {
-        healthBar->setPulsing(true);
+        textureHealthBar->setPulsing(true);
     } else {
-        healthBar->setPulsing(false);
+        textureHealthBar->setPulsing(false);
     }
 }
 

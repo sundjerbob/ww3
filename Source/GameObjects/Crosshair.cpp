@@ -76,8 +76,6 @@ void Crosshair::applyRecoil(const Vec3& recoil) {
     // Set recoil velocity for smooth movement
     recoilVelocity.y = recoil.y * 1.0f; // Positive velocity to match weapon upward rotation
     
-    std::cout << "=== CROSSHAIR RECOIL APPLIED ===" << std::endl;
-    std::cout << "Crosshair Recoil Offset: (" << recoilOffset.x << ", " << recoilOffset.y << ", " << recoilOffset.z << ")" << std::endl;
 }
 
 void Crosshair::updateRecoil(float deltaTime) {

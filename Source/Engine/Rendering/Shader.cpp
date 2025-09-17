@@ -36,8 +36,6 @@ std::string Shader::loadShaderFromFile(const std::string& filePath) {
         return shaderStream.str();
     }
     catch (std::ifstream::failure& e) {
-        std::cerr << "ERROR::SHADER::FILE_NOT_SUCCESSFULLY_READ: " << filePath << std::endl;
-        std::cerr << "Error: " << e.what() << std::endl;
         return "";
     }
 }
@@ -53,7 +51,6 @@ unsigned int Shader::compileShader(unsigned int type, const char* source) {
     glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
     if (!success) {
         glGetShaderInfoLog(shader, 512, NULL, infoLog);
-        std::cerr << "ERROR::SHADER::COMPILATION_FAILED\n" << infoLog << std::endl;
         glDeleteShader(shader);
         return 0;
     }
@@ -70,7 +67,6 @@ bool Shader::loadFromFiles(const std::string& vertexPath, const std::string& fra
     std::string fragmentShaderSource = loadShaderFromFile(fragmentPath);
     
     if (vertexShaderSource.empty() || fragmentShaderSource.empty()) {
-        std::cerr << "ERROR::SHADER::FAILED_TO_LOAD_SHADER_FILES" << std::endl;
         return false;
     }
     
@@ -96,7 +92,6 @@ bool Shader::loadFromFiles(const std::string& vertexPath, const std::string& fra
     glGetProgramiv(programID, GL_LINK_STATUS, &success);
     if (!success) {
         glGetProgramInfoLog(programID, 512, NULL, infoLog);
-        std::cerr << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
         glDeleteProgram(programID);
         programID = 0;
         isValid = false;
@@ -116,7 +111,6 @@ bool Shader::loadFromStrings(const char* vertexSource, const char* fragmentSourc
     cleanup();
     
     if (!vertexSource || !fragmentSource) {
-        std::cerr << "ERROR::SHADER::NULL_SHADER_SOURCE" << std::endl;
         return false;
     }
     
@@ -142,7 +136,6 @@ bool Shader::loadFromStrings(const char* vertexSource, const char* fragmentSourc
     glGetProgramiv(programID, GL_LINK_STATUS, &success);
     if (!success) {
         glGetProgramInfoLog(programID, 512, NULL, infoLog);
-        std::cerr << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
         glDeleteProgram(programID);
         programID = 0;
         isValid = false;

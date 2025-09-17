@@ -18,6 +18,14 @@ Camera::Camera()
 }
 
 void Camera::updateCameraVectors() {
+    // PROPER ANGLE NORMALIZATION: Always keep angles within (-π, π] range
+    // This prevents floating-point error accumulation from large angle values
+    const float PI = 3.14159f;
+    
+    // Normalize yaw to (-π, π] range to prevent trigonometric drift
+    while (yaw > PI) yaw -= 2.0f * PI;
+    while (yaw <= -PI) yaw += 2.0f * PI;
+    
     // Calculate forward direction from spherical coordinates
     forward.x = cos(pitch) * cos(yaw);
     forward.y = sin(pitch);
@@ -108,11 +116,7 @@ void Camera::rotate(float yawOffset, float pitchOffset) {
     if (pitch > maxPitch) pitch = maxPitch;
     if (pitch < -maxPitch) pitch = -maxPitch;
     
-    // Normalize yaw to prevent angle boundary issues
-    // Keep yaw in the range [-π, π] to avoid discontinuities
-    const float twoPi = 2.0f * 3.14159f;
-    while (yaw > 3.14159f) yaw -= twoPi;
-    while (yaw < -3.14159f) yaw += twoPi;
+    // Yaw normalization is now handled in updateCameraVectors()
     
     // Update camera direction vectors when view angles change
     updateCameraVectors();
@@ -134,11 +138,7 @@ void Camera::setRotation(const Vec3& rot) {
         pitch = -90.0f * 3.14159f / 180.0f;
     }
     
-    // Normalize yaw to prevent angle boundary issues
-    // Keep yaw in the range [-π, π] to avoid discontinuities
-    const float twoPi = 2.0f * 3.14159f;
-    while (yaw > 3.14159f) yaw -= twoPi;
-    while (yaw < -3.14159f) yaw += twoPi;
+    // Yaw normalization is now handled in updateCameraVectors()
     
     updateCameraVectors();
 }

@@ -20,7 +20,6 @@ int main() {
     
     // Initialize engine
     if (!game.initialize()) {
-        std::cerr << "Failed to initialize game engine!" << std::endl;
         return -1;
     }
     

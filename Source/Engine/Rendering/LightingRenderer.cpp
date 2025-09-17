@@ -23,26 +23,22 @@ LightingRenderer::~LightingRenderer() {
 bool LightingRenderer::initialize(int width, int height) {
     // Initialize base renderer
     if (!BasicRenderer::initialize(width, height)) {
-        std::cerr << "Failed to initialize base renderer" << std::endl;
         return false;
     }
     
     // Load lighting shader
     if (!lightingShader->loadFromFiles("Resources/Shaders/lighting_vertex.glsl", "Resources/Shaders/lighting_fragment.glsl")) {
-        std::cerr << "Failed to load lighting shader" << std::endl;
         return false;
     }
     
     // Initialize shadow mapping
     if (!shadowMap->initialize()) {
-        std::cerr << "Failed to initialize shadow mapping" << std::endl;
         return false;
     }
     
     // Setup default lighting
     setupDefaultLighting();
     
-    std::cout << "LightingRenderer initialized successfully with shadow mapping" << std::endl;
     return true;
 }
 
@@ -113,7 +109,6 @@ void LightingRenderer::renderMesh(const Mesh& mesh, const Mat4& modelMatrix, con
 
 void LightingRenderer::renderMeshWithMaterial(const Mesh& mesh, const Mat4& modelMatrix, const Camera& camera, const LightingMaterial& material) const {
     if (!lightingShader || !lightingShader->isValidShader()) {
-        std::cerr << "Lighting shader not valid, falling back to basic rendering" << std::endl;
         BasicRenderer::renderMesh(mesh, modelMatrix, camera, material.getDiffuse());
         return;
     }
@@ -200,7 +195,6 @@ void LightingRenderer::updateMaterialUniforms(const Shader& shader, const Lighti
 
 void LightingRenderer::renderSceneWithShadows(const std::vector<GameObject*>& sceneObjects, const Camera& camera) {
     if (!shadowMap || !shadowMap->isValid()) {
-        std::cerr << "Shadow map not available, rendering without shadows" << std::endl;
         return;
     }
     
@@ -209,7 +203,6 @@ void LightingRenderer::renderSceneWithShadows(const std::vector<GameObject*>& sc
     
     // Second pass: Render scene with shadows
     if (!lightingShader || !lightingShader->isValidShader()) {
-        std::cerr << "Lighting shader not valid for shadow rendering" << std::endl;
         return;
     }
     

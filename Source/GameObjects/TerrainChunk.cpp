@@ -33,7 +33,6 @@ TerrainChunk::TerrainChunk(const std::string& name, const Vec2& position, int si
 
 void TerrainChunk::setTerrainData(const std::vector<TerrainBlockType>& blocks) {
     if (blocks.size() != terrainBlocks.size()) {
-        std::cerr << "Warning: Terrain data size mismatch: expected " << terrainBlocks.size() 
                   << ", got " << blocks.size() << std::endl;
         return;
     }
@@ -47,7 +46,6 @@ void TerrainChunk::setTerrainData(const std::vector<TerrainBlockType>& blocks) {
 
 void TerrainChunk::setHeightMap(const std::vector<float>& heights) {
     if (heights.size() != heightMap.size()) {
-        std::cerr << "Warning: Height map size mismatch" << std::endl;
         return;
     }
     

@@ -13,6 +13,30 @@
 #define M_PI 3.14159265358979323846
 #endif
 #include <algorithm>
+#include "../Math/Math.h" // Ensure Math.h is included
+
+using namespace Engine; // Use the Engine namespace for Vec3
+
+// Define Ray structure
+struct Ray {
+    Vec3 origin;
+    Vec3 direction;
+};
+
+// Define HitInfo structure
+struct HitInfo {
+    bool exists;
+    Vec3 position;
+};
+
+// Implement a basic Raycast function
+HitInfo Raycast(const Ray& ray) {
+    // For simplicity, assume the ray always hits a point 1000 units away in the direction of the ray
+    HitInfo hit;
+    hit.exists = true;
+    hit.position = ray.origin + ray.direction * 1000.0f; // Arbitrary far point
+    return hit;
+}
 
 namespace Engine {
 
@@ -28,10 +52,11 @@ ShootingSystem::ShootingSystem()
       burstShotsFired(0),
       currentRecoil(0.0f, 0.0f, 0.0f),
       recoilRecovery(0.0f, 0.0f, 0.0f),
-      recoilPattern(0.0f, 0.0f, 0.0f),
+      recoilPattern(0.0f , 0.0f, 0.0f),
       recoilVelocity(0.0f, 0.0f, 0.0f),
       recoilTimer(0.0f),
       recoilRecoveryRate(2.0f),
+
       maxRecoil(0.5f),
       currentSpread(0.0f),
       spreadRecovery(0.0f),
@@ -134,7 +159,7 @@ bool ShootingSystem::canFire() const {
     if (weaponStats.reloadInProgress) return false;
     if (!checkFireCooldown()) return false;
     return true;
-}
+}   
 
 void ShootingSystem::consumeAmmo(int amount) {
     if (weaponStats.infiniteAmmo) return;
@@ -280,19 +305,19 @@ Projectile* ShootingSystem::spawnMonsterHunterProjectile(const Vec3& position, c
 }
 
 void ShootingSystem::fireProjectile(const Vec3& position, const Vec3& direction) {
-    // Debug output (disabled for now)
-    // std::cout << "=== FIRING PROJECTILE ===" << std::endl;
-    // std::cout << "Fire position: (" << position.x << ", " << position.y << ", " << position.z << ")" << std::endl;
-    // std::cout << "Fire direction: (" << direction.x << ", " << direction.y << ", " << direction.z << ")" << std::endl;
+    // Debug output
+    std::cout << "=== FIRING PROJECTILE ===" << std::endl;
+    std::cout << "Fire position: (" << position.x << ", " << position.y << ", " << position.z << ")" << std::endl;
+    std::cout << "Fire direction: (" << direction.x << ", " << direction.y << ", " << direction.z << ")" << std::endl;
     
     Projectile* projectile = spawnProjectile(position, direction);
     if (projectile) {
         projectile->fire(position, direction, currentWeapon);
-        // std::cout << "Projectile fired successfully" << std::endl;
+        std::cout << "Projectile fired successfully" << std::endl;
     } else {
-        // std::cout << "Failed to spawn projectile!" << std::endl;
+        std::cout << "Failed to spawn projectile!" << std::endl;
     }
-    // std::cout << "=========================" << std::endl;
+    std::cout << "=========================" << std::endl;
 }
 
 void ShootingSystem::fireMonsterHunterProjectile(const Vec3& position, const Vec3& direction) {
@@ -306,49 +331,45 @@ void ShootingSystem::fireMonsterHunterProjectile(const Vec3& position, const Vec
 
 Vec3 ShootingSystem::getFireDirection() const {
     if (playerCamera && currentWeapon) {
-        // Calculate the crosshair target position in world space
-        // The crosshair is at the center of the screen, so we need to calculate
-        // where a ray from the camera through the center of the screen would go
+        // SIMPLE DIRECTION APPROACH:
+        // Calculate direction from fixed gun position to where camera is looking
+        // This creates natural aiming behavior
         
-        // Get camera position and forward direction
         Vec3 cameraPos = playerCamera->getPosition();
         Vec3 cameraForward = playerCamera->getForward();
         
-        // Calculate a point far ahead in the camera's forward direction
-        // This represents where the crosshair is pointing in world space
-        const float crosshairDistance = 100.0f; // Distance to project the crosshair target
-        Vec3 crosshairTarget = cameraPos + cameraForward * crosshairDistance;
+        // Gun position (same as in Weapon::getBarrelTipPosition)
+        Vec3 fixedWorldOffset = Vec3(0.15f, -0.1f, 0.4f);
+        Vec3 gunWorldPos = cameraPos + fixedWorldOffset;
         
-        // Get the gun barrel position
-        Vec3 gunBarrelPos = currentWeapon->getWorldPosition();
+        // Target point in front of camera (where crosshair points)
+        float targetDistance = 100.0f;  // Far enough to act like infinity
+        Vec3 targetPos = cameraPos + cameraForward * targetDistance;
         
-        // Calculate direction from gun barrel to crosshair target
-        Vec3 fireDirection = crosshairTarget - gunBarrelPos;
-        fireDirection = fireDirection.normalize();
+        // Direction from gun to target
+        Vec3 bulletDirection = normalize(targetPos - gunWorldPos);
         
         // Debug output
-        std::cout << "=== GUN TO CROSSHAIR DIRECTION ===" << std::endl;
-        std::cout << "Camera position: (" << cameraPos.x << ", " << cameraPos.y << ", " << cameraPos.z << ")" << std::endl;
-        std::cout << "Camera forward: (" << cameraForward.x << ", " << cameraForward.y << ", " << cameraForward.z << ")" << std::endl;
-        std::cout << "Crosshair target: (" << crosshairTarget.x << ", " << crosshairTarget.y << ", " << crosshairTarget.z << ")" << std::endl;
-        std::cout << "Gun barrel position: (" << gunBarrelPos.x << ", " << gunBarrelPos.y << ", " << gunBarrelPos.z << ")" << std::endl;
-        std::cout << "Fire direction (gun to crosshair): (" << fireDirection.x << ", " << fireDirection.y << ", " << fireDirection.z << ")" << std::endl;
-        std::cout << "===================================" << std::endl;
+        std::cout << "=== SIMPLE DIRECTION CALCULATION ===" << std::endl;
+        std::cout << "Gun position: (" << gunWorldPos.x << ", " << gunWorldPos.y << ", " << gunWorldPos.z << ")" << std::endl;
+        std::cout << "Target position: (" << targetPos.x << ", " << targetPos.y << ", " << targetPos.z << ")" << std::endl;
+        std::cout << "Bullet direction: (" << bulletDirection.x << ", " << bulletDirection.y << ", " << bulletDirection.z << ")" << std::endl;
+        std::cout << "====================================" << std::endl;
         
-        return fireDirection;
+        return bulletDirection;
     }
     return Vec3(0.0f, 0.0f, -1.0f); // Default forward direction
 }
 
 Vec3 ShootingSystem::getFirePosition() const {
     if (currentWeapon && playerCamera) {
-        // Use the weapon's world position calculation (returns barrel tip position)
-        Vec3 barrelTipPos = currentWeapon->getWorldPosition();
+        // NEW 3D APPROACH: Use precise barrel tip position
+        Vec3 barrelTipPos = currentWeapon->getBarrelTipPosition();
         
         // Debug output
-        std::cout << "=== GUN BARREL FIRE POSITION ===" << std::endl;
-        std::cout << "Gun barrel position: (" << barrelTipPos.x << ", " << barrelTipPos.y << ", " << barrelTipPos.z << ")" << std::endl;
-        std::cout << "=================================" << std::endl;
+        std::cout << "=== 3D BARREL TIP FIRE POSITION ===" << std::endl;
+        std::cout << "Barrel tip position: (" << barrelTipPos.x << ", " << barrelTipPos.y << ", " << barrelTipPos.z << ")" << std::endl;
+        std::cout << "===================================" << std::endl;
         
         return barrelTipPos;
     }

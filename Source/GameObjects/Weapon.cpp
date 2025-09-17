@@ -21,15 +21,22 @@
 #include <cmath>
 #include <map>
 
+// Define M_PI if not already defined
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 namespace Engine {
 
 Weapon::Weapon(const std::string& name, const std::string& modelPath, const Vec3& color)
     : GameObject(name),
       weaponModelPath(modelPath),
       weaponColor(color),
-      weaponScale(1.0f),
-      screenPosition(0.0f, -0.5f, 0.0f),  // Lower position to show more handle
+      weaponScale(0.5f),  // Smaller scale for better FPS weapon size
+      screenPosition(0.0f, -0.1f, 0.0f),  // Legacy screen position (kept for compatibility)
       weaponOffset(0.0f, 0.0f, 0.0f),
+      worldSpaceOffset(0.3f, -0.2f, 0.4f),  // 3D offset from camera in world space - closer and lower
+      barrelTipOffset(0.0f, 0.0f, 0.6f),    // Offset to barrel tip from weapon origin - shorter
       isLoaded(true),  // Force weapon to be loaded by default
       isVisible(true),
       recoilOffset(0.0f, 0.0f, 0.0f),
@@ -325,7 +332,7 @@ void Weapon::updateWeaponRotation() {
     // Enhanced aim-follow effect to show more handle when looking down
     Vec3 cameraRotation = playerCamera->getRotation(); // degrees
     float pitchInfluence = std::max(-5.0f, std::min(5.0f, cameraRotation.x * 0.1f)); // Increased influence
-    float yawInfluence   = std::max(-3.0f, std::min(3.0f, cameraRotation.y * 0.02f)); // Keep yaw influence
+    float yawInfluence   = std::max(-1.0f, std::min(1.0f, cameraRotation.y * 0.005f)); // GREATLY reduced yaw influence to minimize bullet path shifting
     
     // Add a slight downward tilt to show more of the handle
     float handleTilt = -3.0f; // Tilt down to show handle
@@ -360,7 +367,9 @@ Vec3 Weapon::calculateAimDirection() const {
         return Vec3(0.0f, 0.0f, -1.0f);  // Default forward direction
     }
     
-    // Get camera's forward direction
+    // ALWAYS use camera's forward direction for bullet path
+    // This ensures bullets always go where the crosshair is pointing
+    // regardless of weapon visual rotation
     return playerCamera->getForward();
 }
 
@@ -458,9 +467,9 @@ void Weapon::createMaterialGroups(const OBJMeshData& objData) {
                 group.indices = materialIndexMap[materialName];
                 
                 materialGroups.push_back(group);
-                std::cout << "Created material group '" << materialName << "' with color ("
-                          << mat->diffuse.x << ", " << mat->diffuse.y << ", " << mat->diffuse.z 
-                          << ") and " << group.indices.size() / 3 << " triangles" << std::endl;
+                // std::cout << "Created material group '" << materialName << "' with color ("
+                //           << mat->diffuse.x << ", " << mat->diffuse.y << ", " << mat->diffuse.z 
+                //           << ") and " << group.indices.size() / 3 << " triangles" << std::endl;
             }
         }
     } else {
@@ -489,7 +498,7 @@ void Weapon::initializeWeaponInventory() {
     assaultRifle.modelPath = "Resources/Objects/WeaponsPack_V.1/WeaponsPack_V.1/OBJ/AssaultRifle_01.obj";
     assaultRifle.color = Vec3(0.8f, 0.8f, 0.8f);
     assaultRifle.scale = 0.35f;
-    assaultRifle.offset = Vec3(-0.05f, -0.1f, 0.0f);
+    assaultRifle.offset = Vec3(0.0f, 0.0f, 0.0f);  // Consistent position for all weapons
     assaultRifle.defaultRotation = Vec3(0.0f, 0.0f, 0.0f);
     assaultRifle.aimSensitivity = 1.0f;
     
@@ -516,7 +525,7 @@ void Weapon::initializeWeaponInventory() {
     sniperRifle.modelPath = "Resources/Objects/WeaponsPack_V.1/WeaponsPack_V.1/OBJ/SniperRifle_01.obj";
     sniperRifle.color = Vec3(0.8f, 0.8f, 0.8f);
     sniperRifle.scale = 0.35f;
-    sniperRifle.offset = Vec3(-0.05f, -0.1f, 0.0f);
+    sniperRifle.offset = Vec3(0.0f, 0.0f, 0.0f);  // Consistent position for all weapons
     sniperRifle.defaultRotation = Vec3(0.0f, 0.0f, 0.0f);
     sniperRifle.aimSensitivity = 1.0f;
     
@@ -545,7 +554,7 @@ void Weapon::initializeWeaponInventory() {
     smg.modelPath = "Resources/Objects/WeaponsPack_V.1/WeaponsPack_V.1/OBJ/SubmachineGun_01.obj";
     smg.color = Vec3(0.8f, 0.8f, 0.8f);
     smg.scale = 0.25f;
-    smg.offset = Vec3(-0.03f, -0.08f, 0.0f);
+    smg.offset = Vec3(0.0f, 0.0f, 0.0f);  // Consistent position for all weapons
     smg.defaultRotation = Vec3(0.0f, 0.0f, 0.0f);
     smg.aimSensitivity = 1.0f;
     
@@ -573,7 +582,7 @@ void Weapon::initializeWeaponInventory() {
     pistol.modelPath = "Resources/Objects/WeaponsPack_V.1/WeaponsPack_V.1/OBJ/Pistol_01.obj";
     pistol.color = Vec3(0.8f, 0.8f, 0.8f);
     pistol.scale = 0.28f;
-    pistol.offset = Vec3(-0.04f, -0.09f, 0.0f);
+    pistol.offset = Vec3(0.0f, 0.0f, 0.0f);  // Consistent position for all weapons
     pistol.defaultRotation = Vec3(0.0f, 0.0f, 0.0f);
     pistol.aimSensitivity = 1.0f;
     
@@ -601,7 +610,7 @@ void Weapon::initializeWeaponInventory() {
     shotgun.modelPath = "Resources/Objects/WeaponsPack_V.1/WeaponsPack_V.1/OBJ/Shotgun_01.obj";
     shotgun.color = Vec3(0.8f, 0.8f, 0.8f);
     shotgun.scale = 0.30f;
-    shotgun.offset = Vec3(-0.05f, -0.1f, 0.0f);
+    shotgun.offset = Vec3(0.0f, 0.0f, 0.0f);  // Consistent position for all weapons
     shotgun.defaultRotation = Vec3(0.0f, 90.0f, 0.0f);
     shotgun.aimSensitivity = 1.0f;
     
@@ -908,9 +917,9 @@ Vec3 Weapon::getWorldPosition() const {
     
     // Calculate weapon world position based on screen position
     // Scale factors to convert from screen space to world space
-    const float horizontalScale = 0.8f;  // How far left/right the weapon can be
-    const float verticalScale = 0.6f;    // How far up/down the weapon can be
-    const float forwardOffset = 0.3f;    // How far forward the weapon is from camera
+    const float horizontalScale = 0.3f;  // Even more reduced horizontal scale for centered weapon
+    const float verticalScale = 0.3f;    // Even more reduced vertical scale for centered weapon
+    const float forwardOffset = 0.15f;   // Even more reduced forward offset for centered weapon
     
     Vec3 weaponWorldPos = cameraPos + 
                          cameraRight * weaponScreenPos.x * horizontalScale +  // Horizontal offset
@@ -918,8 +927,10 @@ Vec3 Weapon::getWorldPosition() const {
                          cameraForward * (forwardOffset + weaponScreenPos.z);  // Forward offset
     
     // Adjust position to be more precisely at the gun barrel
-    // Move forward along the weapon's forward direction to get to the barrel tip
-    const float barrelLength = 0.4f;  // Approximate barrel length
+    // Move forward along the weapon's   forward direction to get to the barrel tip
+    // Use a more precise barrel length calculation based on weapon scale
+    const float baseBarrelLength = 0.5f;  // Base barrel length for standard weapon
+    float barrelLength = baseBarrelLength * weaponScale;  // Scale barrel length with weapon scale
     Vec3 weaponForward = calculateAimDirection();  // Get weapon's aim direction
     Vec3 barrelTipPos = weaponWorldPos + weaponForward * barrelLength;
     
@@ -932,6 +943,74 @@ Vec3 Weapon::getWorldPosition() const {
     // std::cout << "=============================" << std::endl;
     
     return barrelTipPos;
+}
+
+// ===== NEW 3D WORLD-SPACE POSITIONING METHODS =====
+
+void Weapon::updateWorldPosition() {
+    if (!playerCamera) {
+        return;
+    }
+    
+    // Get camera position and orientation
+    Vec3 cameraPos = playerCamera->getPosition();
+    Vec3 cameraForward = playerCamera->getForward();
+    Vec3 cameraRight = playerCamera->getRight();
+    Vec3 cameraUp = playerCamera->getUpVector();
+    
+    // Calculate weapon position in world space
+    // Apply 3D offset from camera using world-space coordinates
+    Vec3 weaponWorldPos = cameraPos + 
+                         cameraRight * (worldSpaceOffset.x + recoilOffset.x) +    // Right/Left offset + recoil
+                         cameraUp * (worldSpaceOffset.y + recoilOffset.y) +       // Up/Down offset + recoil
+                         cameraForward * (worldSpaceOffset.z + recoilOffset.z);   // Forward/Back offset + recoil
+    
+    // Update weapon's position in world space
+    setPosition(weaponWorldPos);
+    
+    // Calculate weapon rotation to always point forward with camera
+    // Apply camera's yaw and pitch to weapon orientation
+    Vec3 weaponRotation = playerCamera->getRotation();
+    weaponRotation += defaultRotation; // Add weapon-specific rotation offset
+    weaponRotation += recoilRotation;  // Add recoil-based rotation
+    setRotation(weaponRotation);
+    
+    // Debug output (can be enabled for testing)
+    /*
+    std::cout << "=== 3D WEAPON POSITIONING ===" << std::endl;
+    std::cout << "Camera position: (" << cameraPos.x << ", " << cameraPos.y << ", " << cameraPos.z << ")" << std::endl;
+    std::cout << "World space offset: (" << worldSpaceOffset.x << ", " << worldSpaceOffset.y << ", " << worldSpaceOffset.z << ")" << std::endl;
+    std::cout << "Weapon world position: (" << weaponWorldPos.x << ", " << weaponWorldPos.y << ", " << weaponWorldPos.z << ")" << std::endl;
+    std::cout << "Weapon rotation: (" << weaponRotation.x << ", " << weaponRotation.y << ", " << weaponRotation.z << ")" << std::endl;
+    std::cout << "=============================" << std::endl;
+    */
+}
+
+Vec3 Weapon::getBarrelTipPosition() const {
+    if (!playerCamera) {
+        return Vec3(0.0f, 0.0f, 0.0f);
+    }
+    
+    // PURE FIXED WORLD OFFSET SOLUTION:
+    // Gun positioned at constant world coordinates relative to camera
+    // This creates consistent screen appearance without rotation dependency
+    
+    Vec3 cameraPos = playerCamera->getPosition();
+    
+    // ABSOLUTE FIXED WORLD OFFSET - never affected by camera rotation
+    Vec3 fixedWorldOffset = Vec3(0.15f, -0.1f, 0.4f);
+    Vec3 gunWorldPos = cameraPos + fixedWorldOffset;
+    
+    // Debug to verify position is truly constant
+    static int shotCount = 0;
+    shotCount++;
+    std::cout << "=== SHOT " << shotCount << " PURE FIXED OFFSET ===" << std::endl;
+    std::cout << "Camera position: (" << cameraPos.x << ", " << cameraPos.y << ", " << cameraPos.z << ")" << std::endl;
+    std::cout << "Fixed world offset: (" << fixedWorldOffset.x << ", " << fixedWorldOffset.y << ", " << fixedWorldOffset.z << ")" << std::endl;
+    std::cout << "Gun world position: (" << gunWorldPos.x << ", " << gunWorldPos.y << ", " << gunWorldPos.z << ")" << std::endl;
+    std::cout << "=============================================" << std::endl;
+    
+    return gunWorldPos;
 }
 
 } // namespace Engine

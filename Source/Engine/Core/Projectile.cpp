@@ -244,9 +244,45 @@ void Projectile::fire(const Vec3& position, const Vec3& direction, GameObject* o
     std::cout << "Velocity: (" << velocity.x << ", " << velocity.y << ", " << velocity.z << ")" << std::endl;
     std::cout << "Normalized direction: (" << normalizedDir.x << ", " << normalizedDir.y << ", " << normalizedDir.z << ")" << std::endl;
     
-    // Simple rotation: no rotation for now, just use default orientation
-    setRotation(Vec3(0.0f, 0.0f, 0.0f));
-    std::cout << "Rotation set to: (0, 0, 0)" << std::endl;
+    // Calculate rotation to align bullet's +Z axis with velocity direction
+    // The bullet mesh has its pointed tip in the +Z direction by default
+    Vec3 bulletForward = Vec3(0.0f, 0.0f, 1.0f); // Default bullet forward direction (+Z)
+    Vec3 targetDirection = normalizedDir; // Direction we want the bullet to face
+    
+    // Calculate rotation using Euler angles
+    // We need to rotate from bulletForward to targetDirection
+    
+    // Calculate yaw (rotation around Y axis)
+    float yaw = atan2(targetDirection.x, targetDirection.z);
+    
+    // Store previous yaw for angle unwrapping (continuous angle tracking)
+    static float previousYaw = 0.0f;
+    
+    // Angle unwrapping to prevent discontinuity at ±π (0°/180° yaw)
+    // This ensures smooth rotation without jumps when crossing the Z-axis
+    float delta = yaw - previousYaw;
+    if (delta > M_PI) {
+        yaw -= 2.0f * static_cast<float>(M_PI);
+    } else if (delta < -M_PI) {
+        yaw += 2.0f * static_cast<float>(M_PI);
+    }
+    previousYaw = yaw;
+    
+    // Calculate pitch (rotation around X axis)
+    float pitch = -asin(targetDirection.y);
+    
+    // Roll is 0 for bullets (no roll needed)
+    float roll = 0.0f;
+    
+    Vec3 rotation = Vec3(pitch, yaw, roll);
+    setRotation(rotation);
+    
+    std::cout << "=== BULLET ROTATION CALCULATION ===" << std::endl;
+    std::cout << "Bullet forward (default): (" << bulletForward.x << ", " << bulletForward.y << ", " << bulletForward.z << ")" << std::endl;
+    std::cout << "Target direction: (" << targetDirection.x << ", " << targetDirection.y << ", " << targetDirection.z << ")" << std::endl;
+    std::cout << "Calculated rotation (pitch, yaw, roll): (" << pitch << ", " << yaw << ", " << roll << ")" << std::endl;
+    std::cout << "Rotation in degrees: (" << (pitch * 180.0f / M_PI) << ", " << (yaw * 180.0f / M_PI) << ", " << (roll * 180.0f / M_PI) << ")" << std::endl;
+    std::cout << "===================================" << std::endl;
     
     // Set owner
     this->owner = owner;

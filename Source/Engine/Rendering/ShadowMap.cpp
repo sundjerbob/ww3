@@ -18,7 +18,6 @@ bool ShadowMap::initialize() {
         return true;
     }
     
-    std::cout << "Initializing ShadowMap with resolution " << shadowMapResolution << "x" << shadowMapResolution << std::endl;
     
     // Create framebuffer for shadow mapping
     glGenFramebuffers(1, &shadowMapFBO);
@@ -48,7 +47,6 @@ bool ShadowMap::initialize() {
     
     // Check if framebuffer is complete
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-        std::cerr << "Shadow map framebuffer is not complete!" << std::endl;
         return false;
     }
     
@@ -58,18 +56,15 @@ bool ShadowMap::initialize() {
     // Load shadow mapping shaders
     depthMapShader = std::make_unique<Shader>();
     if (!depthMapShader->loadFromFiles("Resources/Shaders/depth_map_vertex.glsl", "Resources/Shaders/depth_map_fragment.glsl")) {
-        std::cerr << "Failed to load depth map shaders" << std::endl;
         return false;
     }
     
     shadowShader = std::make_unique<Shader>();
     if (!shadowShader->loadFromFiles("Resources/Shaders/shadow_vertex.glsl", "Resources/Shaders/shadow_fragment.glsl")) {
-        std::cerr << "Failed to load shadow shaders" << std::endl;
         return false;
     }
     
     isInitialized = true;
-    std::cout << "ShadowMap initialized successfully" << std::endl;
     return true;
 }
 

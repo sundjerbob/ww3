@@ -10,6 +10,7 @@
 #include "../Engine/Rendering/MaterialLoader.h"
 #include "../Engine/Rendering/Renderer.h"
 #include "../Engine/Rendering/MonsterRenderer.h"
+#include "../Engine/Rendering/RendererFactory.h"
 #include <iostream>
 #include <algorithm>
 #include <cmath>
@@ -30,7 +31,7 @@ Monster::Monster(const std::string& name, MonsterType monsterType)
       state(MonsterState::Idle),
       health(100.0f),
       maxHealth(100.0f),
-      moveSpeed(8.0f),      // Much faster default speed
+      moveSpeed(2.0f),      // Slower default speed for better gameplay
       attackRange(2.0f),
       attackDamage(25.0f),
       detectionRange(5.0f),   // Reduced default detection range
@@ -39,8 +40,8 @@ Monster::Monster(const std::string& name, MonsterType monsterType)
       moveTimer(0.0f),
       stateTimer(0.0f),
       patrolRadius(15.0f),  // Reasonable patrol radius for visible movement
-      chargeSpeed(15.0f),   // Much faster speed when charging
-      baseSpeed(8.0f),      // Much faster normal patrol speed
+      chargeSpeed(4.0f),    // Slower speed when charging
+      baseSpeed(2.0f),      // Slower normal patrol speed
       isCharging(false),    // Start in non-charging mode
       lastAttackTime(0.0f),
       attackCooldown(2.0f),
@@ -86,10 +87,8 @@ Monster::Monster(const std::string& name, MonsterType monsterType)
       markedForDeletion(false),
       deletionTimer(0.0f),
       playerTarget(nullptr),
-      showHealthBar(true),
-      healthBarWidth(4.0f),
-      healthBarHeight(0.8f),
-      healthBarOffsetY(4.0f) {
+      textureHealthBar(nullptr),  // NEW: Using texture-based system
+      showHealthBar(true) { // Higher above monster
     
     // Set entity flag to true for monsters
     setEntity(true);
@@ -101,25 +100,29 @@ Monster::Monster(const std::string& name, MonsterType monsterType)
 bool Monster::initialize() {
     if (isInitialized) return true;
     
-    std::cout << "=== INITIALIZING MONSTER: " << getName() << " ===" << std::endl;
+    // std::cout << "=== INITIALIZING MONSTER: " << getName() << " ===" << std::endl;
     
     // Setup monster mesh
-    std::cout << "Setting up monster mesh..." << std::endl;
+    // std::cout << "Setting up monster mesh..." << std::endl;
     setupMonsterMesh();
     
     // Setup monster material
-    std::cout << "Setting up monster material..." << std::endl;
+    // std::cout << "Setting up monster material..." << std::endl;
     setupMonsterMaterial();
     
     // Set initial target position
     targetPosition = getPosition();
     
-    // Health bar will be rendered inline - no separate object needed
-    std::cout << "Monster initialized with inline health bar rendering" << std::endl;
+    // Create health bar - NEW: Using texture-based system
+    if (showHealthBar) {
+        textureHealthBar = std::make_unique<TextureHealthBar>(2.5f, 0.5f, 2.5f); // Position 2.5 units above monster
+        textureHealthBar->setHealth(health, maxHealth);
+        textureHealthBar->initialize();
+    }
     
     isInitialized = true;
-    std::cout << "Monster initialized successfully: " << getName() << std::endl;
-    std::cout << "=== END INITIALIZATION ===" << std::endl;
+    // std::cout << "Monster initialized successfully: " << getName() << std::endl;
+    // std::cout << "=== END INITIALIZATION ===" << std::endl;
     return true;
 }
 
@@ -130,31 +133,41 @@ void Monster::update(float deltaTime) {
     // Don't touch them at all to prevent memory corruption
     if (isDead()) return;
     
-    // Debug output every few seconds
+    // Debug output every few seconds to track position changes
     static float updateDebugTimer = 0.0f;
+    static Vec3 lastLoggedPosition = Vec3(0.0f, 0.0f, 0.0f);
     updateDebugTimer += deltaTime;
-    if (updateDebugTimer > 3.0f) {
-        std::cout << "=== MONSTER UPDATE ===" << std::endl;
+    
+    Vec3 currentPos = getPosition();
+    float positionChange = sqrt(
+        (currentPos.x - lastLoggedPosition.x) * (currentPos.x - lastLoggedPosition.x) +
+        (currentPos.y - lastLoggedPosition.y) * (currentPos.y - lastLoggedPosition.y) +
+        (currentPos.z - lastLoggedPosition.z) * (currentPos.z - lastLoggedPosition.z)
+    );
+    
+    if (updateDebugTimer > 3.0f || positionChange > 0.1f) {
+        std::cout << "=== MONSTER POSITION DEBUG ===" << std::endl;
         std::cout << "Monster: " << getName() << std::endl;
         std::cout << "State: " << getStateName(state) << std::endl;
-        std::cout << "Position: (" << getPosition().x << ", " << getPosition().y << ", " << getPosition().z << ")" << std::endl;
+        std::cout << "Position: (" << currentPos.x << ", " << currentPos.y << ", " << currentPos.z << ")" << std::endl;
+        std::cout << "Position change: " << positionChange << std::endl;
         std::cout << "Target: (" << targetPosition.x << ", " << targetPosition.y << ", " << targetPosition.z << ")" << std::endl;
-        std::cout << "Move speed: " << moveSpeed << std::endl;
         std::cout << "Active: " << (getActive() ? "YES" : "NO") << std::endl;
-        std::cout << "====================" << std::endl;
+        std::cout << "===============================" << std::endl;
         updateDebugTimer = 0.0f;
+        lastLoggedPosition = currentPos;
     }
     
     // Update AI behavior
-    updateAI(deltaTime);
+    // updateAI(deltaTime);  // DISABLED: Focus on health bar positioning
     
     // Update movement
-    updateMovement(deltaTime);
+    // updateMovement(deltaTime);  // DISABLED: Focus on health bar positioning
     
     // Update visual effects
     updateVisualEffects(deltaTime);
     
-    // Update health bar
+    // Update health bar - NEW: Using texture-based system
     updateHealthBar();
     
     // Call base class update
@@ -164,7 +177,7 @@ void Monster::update(float deltaTime) {
 void Monster::markForDeletion() {
     markedForDeletion = true;
     deletionTimer = 0.0f;
-    std::cout << "Monster " << getName() << " marked for deletion" << std::endl;
+    // std::cout << "Monster " << getName() << " marked for deletion" << std::endl;
 }
 
 
@@ -181,7 +194,7 @@ void Monster::render(const Renderer& renderer, const Camera& camera) {
         // Use monster renderer for multi-material rendering
         Mat4 monsterMatrix = getModelMatrix();
         
-        std::cout << "Rendering monster " << getName() << " with " << materialGroups.size() << " material groups" << std::endl;
+        // std::cout << "Rendering monster " << getName() << " with " << materialGroups.size() << " material groups" << std::endl;
         
         // Render each material group with its own color
         for (const auto& materialGroup : materialGroups) {
@@ -190,9 +203,9 @@ void Monster::render(const Renderer& renderer, const Camera& camera) {
             // Apply damage flash effect
             if (isFlashing) {
                 renderColor = damageColor;
-                std::cout << "  Applying damage flash color: " << renderColor.x << ", " << renderColor.y << ", " << renderColor.z << std::endl;
+                // std::cout << "  Applying damage flash color: " << renderColor.x << ", " << renderColor.y << ", " << renderColor.z << std::endl;
             } else {
-                std::cout << "  Using material color: " << renderColor.x << ", " << renderColor.y << ", " << renderColor.z << std::endl;
+                // std::cout << "  Using material color: " << renderColor.x << ", " << renderColor.y << ", " << renderColor.z << std::endl;
             }
             
             monsterRenderer->renderMonsterTriangles(*mesh, monsterMatrix, camera, renderColor, materialGroup.indices, true);
@@ -204,17 +217,17 @@ void Monster::render(const Renderer& renderer, const Camera& camera) {
         if (!materialGroups.empty()) {
             // Use the first material group's color as the dominant color
             finalColor = materialGroups[0].color;
-            std::cout << "Monster " << getName() << " using first material color: " << finalColor.x << ", " << finalColor.y << ", " << finalColor.z << std::endl;
+            // std::cout << "Monster " << getName() << " using first material color: " << finalColor.x << ", " << finalColor.y << ", " << finalColor.z << std::endl;
         } else {
             // Fallback to original color system
             finalColor = getCurrentColor();
-            std::cout << "Monster " << getName() << " using fallback original color: " << finalColor.x << ", " << finalColor.y << ", " << finalColor.z << std::endl;
+            // std::cout << "Monster " << getName() << " using fallback original color: " << finalColor.x << ", " << finalColor.y << ", " << finalColor.z << std::endl;
         }
             
             // Apply damage flash effect
             if (isFlashing) {
             finalColor = damageColor;
-            std::cout << "Monster " << getName() << " applying damage flash: " << finalColor.x << ", " << finalColor.y << ", " << finalColor.z << std::endl;
+            // std::cout << "Monster " << getName() << " applying damage flash: " << finalColor.x << ", " << finalColor.y << ", " << finalColor.z << std::endl;
         }
         
         // CRITICAL: Always set the color before rendering
@@ -224,14 +237,13 @@ void Monster::render(const Renderer& renderer, const Camera& camera) {
         GameObject::render(renderer, camera);
     }
     
-    // Render health bar inline
-    renderHealthBar(renderer, camera);
+    // Health bar is now rendered separately in Game::render after monster rendering
 }
 
 void Monster::cleanup() {
     if (!isInitialized) return;
     
-    std::cout << "Cleaning up Monster: " << getName() << std::endl;
+    // std::cout << "Cleaning up Monster: " << getName() << std::endl;
     
     playerTarget = nullptr;
     
@@ -241,7 +253,7 @@ void Monster::cleanup() {
 void Monster::spawn(const Vec3& position) {
     setPosition(position);
     setHealth(maxHealth);
-    setState(MonsterState::Patrolling);
+    setState(MonsterState::Idle);  // FIXED: Set to Idle to prevent movement
     resetTimers();
     setActive(true);
     
@@ -254,33 +266,33 @@ void Monster::spawn(const Vec3& position) {
         setRotationFromDirection(direction);
     }
     
-    std::cout << "=== MONSTER SPAWN ===" << std::endl;
-    std::cout << "Monster " << getName() << " spawned at: (" << position.x << ", " << position.y << ", " << position.z << ")" << std::endl;
-    std::cout << "Initial patrol target: (" << targetPosition.x << ", " << targetPosition.y << ", " << targetPosition.z << ")" << std::endl;
-    std::cout << "Initial rotation: (" << getRotation().x << ", " << getRotation().y << ", " << getRotation().z << ") degrees" << std::endl;
-    std::cout << "Monster type: " << static_cast<int>(type) << std::endl;
-    std::cout << "Initial state: Patrolling" << std::endl;
-    std::cout << "Health: " << health << "/" << maxHealth << std::endl;
-    std::cout << "Move speed: " << moveSpeed << std::endl;
-    std::cout << "Active: " << (getActive() ? "YES" : "NO") << std::endl;
-    std::cout << "Entity flag: " << (getEntity() ? "YES" : "NO") << std::endl;
-    std::cout << "=================" << std::endl;
+    // std::cout << "=== MONSTER SPAWN ===" << std::endl;
+    // std::cout << "Monster " << getName() << " spawned at: (" << position.x << ", " << position.y << ", " << position.z << ")" << std::endl;
+    // std::cout << "Initial patrol target: (" << targetPosition.x << ", " << targetPosition.y << ", " << targetPosition.z << ")" << std::endl;
+    // std::cout << "Initial rotation: (" << getRotation().x << ", " << getRotation().y << ", " << getRotation().z << ") degrees" << std::endl;
+    // std::cout << "Monster type: " << static_cast<int>(type) << std::endl;
+    // std::cout << "Initial state: Patrolling" << std::endl;
+    // std::cout << "Health: " << health << "/" << maxHealth << std::endl;
+    // std::cout << "Move speed: " << moveSpeed << std::endl;
+    // std::cout << "Active: " << (getActive() ? "YES" : "NO") << std::endl;
+    // std::cout << "Entity flag: " << (getEntity() ? "YES" : "NO") << std::endl;
+    // std::cout << "=================" << std::endl;
 }
 
 void Monster::takeDamage(float damage, GameObject* attacker) {
     // CRASH PREVENTION: Multiple safety checks
     if (isDead()) {
-        std::cout << "Monster " << getName() << " is already dead, ignoring damage" << std::endl;
+        // std::cout << "Monster " << getName() << " is already dead, ignoring damage" << std::endl;
         return;
     }
     
     if (!getActive()) {
-        std::cout << "Monster " << getName() << " is inactive, ignoring damage" << std::endl;
+        // std::cout << "Monster " << getName() << " is inactive, ignoring damage" << std::endl;
         return;
     }
     
     if (health <= 0.0f) {
-        std::cout << "Monster " << getName() << " has no health, ignoring damage" << std::endl;
+        // std::cout << "Monster " << getName() << " has no health, ignoring damage" << std::endl;
         return;
     }
     
@@ -303,11 +315,11 @@ void Monster::takeDamage(float damage, GameObject* attacker) {
     
     // Health bar is now rendered inline - no separate object to update
     
-    std::cout << "Monster " << getName() << " took " << damage << " damage. Health: " << health << "/" << maxHealth << std::endl;
+    // std::cout << "Monster " << getName() << " took " << damage << " damage. Health: " << health << "/" << maxHealth << std::endl;
     
     // If health reaches 0, die
     if (health <= 0.0f) {
-        std::cout << "Monster " << getName() << " health reached 0, calling die()..." << std::endl;
+        // std::cout << "Monster " << getName() << " health reached 0, calling die()..." << std::endl;
         die();
     }
     
@@ -318,29 +330,29 @@ void Monster::takeDamage(float damage, GameObject* attacker) {
 void Monster::die() {
     if (isDead()) return;
     
-    std::cout << "=== MONSTER DEATH PROCESS STARTING ===" << std::endl;
-    std::cout << "Monster: " << getName() << std::endl;
+    // std::cout << "=== MONSTER DEATH PROCESS STARTING ===" << std::endl;
+    // std::cout << "Monster: " << getName() << std::endl;
     
     // CRASH PREVENTION: Set state first to prevent further updates
     setState(MonsterState::Dead);
-    std::cout << "State set to Dead" << std::endl;
+    // std::cout << "State set to Dead" << std::endl;
     
     // Start death animation
     startDeathAnimation();
-    std::cout << "Death animation started" << std::endl;
+    // std::cout << "Death animation started" << std::endl;
     
     // CRASH PREVENTION: Mark monster as inactive immediately
     setActive(false);
-    std::cout << "Monster marked as inactive" << std::endl;
+    // std::cout << "Monster marked as inactive" << std::endl;
     
     // CRASH PREVENTION: Set health to 0 to prevent further damage
     health = 0.0f;
-    std::cout << "Health set to 0" << std::endl;
+    // std::cout << "Health set to 0" << std::endl;
     
     // Health bar is now rendered inline - no separate object to clean up
-    std::cout << "Monster " << getName() << " died! No health bar cleanup needed (inline rendering)" << std::endl;
+    // std::cout << "Monster " << getName() << " died! No health bar cleanup needed (inline rendering)" << std::endl;
     
-    std::cout << "Monster " << getName() << " died! (Scene will ignore it)" << std::endl;
+    // std::cout << "Monster " << getName() << " died! (Scene will ignore it)" << std::endl;
     
     // Drop loot if not already dropped
     if (!hasDroppedLoot) {
@@ -349,15 +361,15 @@ void Monster::die() {
     }
     
     // Call death callback with error handling
-    std::cout << "Calling onDeath callback..." << std::endl;
+    // std::cout << "Calling onDeath callback..." << std::endl;
     try {
         onDeath();
-        std::cout << "onDeath callback completed" << std::endl;
-    } catch (const std::exception& e) {
-        std::cout << "Error in onDeath callback: " << e.what() << std::endl;
+        // std::cout << "onDeath callback completed" << std::endl;
+    } catch (const std::exception&) {
+        // std::cout << "Error in onDeath callback: " << e.what() << std::endl;
     }
     
-    std::cout << "=== MONSTER DEATH PROCESS COMPLETED ===" << std::endl;
+    // std::cout << "=== MONSTER DEATH PROCESS COMPLETED ===" << std::endl;
 }
 
 void Monster::updateAI(float deltaTime) {
@@ -389,10 +401,10 @@ void Monster::updateMovement(float deltaTime) {
     static float movementDebugTimer = 0.0f;
     movementDebugTimer += deltaTime;
     if (movementDebugTimer > 2.0f) {
-        std::cout << "=== MOVEMENT UPDATE ===" << std::endl;
-        std::cout << "Monster: " << getName() << std::endl;
-        std::cout << "State: " << getStateName(state) << std::endl;
-        std::cout << "Delta time: " << deltaTime << std::endl;
+        // std::cout << "=== MOVEMENT UPDATE ===" << std::endl;
+        // std::cout << "Monster: " << getName() << std::endl;
+        // std::cout << "State: " << getStateName(state) << std::endl;
+        // std::cout << "Delta time: " << deltaTime << std::endl;
         movementDebugTimer = 0.0f;
     }
     
@@ -400,7 +412,7 @@ void Monster::updateMovement(float deltaTime) {
         case MonsterState::Idle:
             // Do nothing, just stand still
             if (movementDebugTimer < 0.1f) { // Only print once per debug cycle
-                std::cout << "Monster " << getName() << " is IDLE - not moving" << std::endl;
+                // std::cout << "Monster " << getName() << " is IDLE - not moving" << std::endl;
             }
             break;
             
@@ -411,7 +423,7 @@ void Monster::updateMovement(float deltaTime) {
         case MonsterState::Alert:
             // Look around and prepare for action
             if (movementDebugTimer < 0.1f) {
-                std::cout << "Monster " << getName() << " is ALERT - scanning area" << std::endl;
+                // std::cout << "Monster " << getName() << " is ALERT - scanning area" << std::endl;
             }
             break;
             
@@ -427,7 +439,7 @@ void Monster::updateMovement(float deltaTime) {
         case MonsterState::Stunned:
             // No movement when stunned
             if (movementDebugTimer < 0.1f) {
-                std::cout << "Monster " << getName() << " is STUNNED - cannot move" << std::endl;
+                // std::cout << "Monster " << getName() << " is STUNNED - cannot move" << std::endl;
             }
             break;
             
@@ -454,21 +466,21 @@ void Monster::updateState(float deltaTime) {
     static float aiDebugTimer = 0.0f;
     aiDebugTimer += deltaTime;
     if (aiDebugTimer > 2.0f) {
-        std::cout << "=== AI STATE EVALUATION ===" << std::endl;
-        std::cout << "Monster: " << getName() << std::endl;
-        std::cout << "Current state: " << getStateName(state) << std::endl;
-        std::cout << "Evaluated next state: " << getStateName(newState) << std::endl;
+        // std::cout << "=== AI STATE EVALUATION ===" << std::endl;
+        // std::cout << "Monster: " << getName() << std::endl;
+        // std::cout << "Current state: " << getStateName(state) << std::endl;
+        // std::cout << "Evaluated next state: " << getStateName(newState) << std::endl;
         if (playerTarget) {
             float distance = getDistanceToPlayer();
-            std::cout << "Distance to player: " << distance << " units" << std::endl;
-            std::cout << "Can see player: " << (canSeePlayer() ? "YES" : "NO") << std::endl;
-            std::cout << "In danger zone: " << (isPlayerInDangerZone() ? "YES" : "NO") << std::endl;
-            std::cout << "In attack range: " << (isInAttackRange() ? "YES" : "NO") << std::endl;
-            std::cout << "Detection range: " << detectionRange << ", Danger: " << dangerRange << ", Attack: " << attackRange << std::endl;
+            // std::cout << "Distance to player: " << distance << " units" << std::endl;
+            // std::cout << "Can see player: " << (canSeePlayer() ? "YES" : "NO") << std::endl;
+            // std::cout << "In danger zone: " << (isPlayerInDangerZone() ? "YES" : "NO") << std::endl;
+            // std::cout << "In attack range: " << (isInAttackRange() ? "YES" : "NO") << std::endl;
+            // std::cout << "Detection range: " << detectionRange << ", Danger: " << dangerRange << ", Attack: " << attackRange << std::endl;
         } else {
-            std::cout << "No player target set!" << std::endl;
+            // std::cout << "No player target set!" << std::endl;
         }
-        std::cout << "=========================" << std::endl;
+        // std::cout << "=========================" << std::endl;
         aiDebugTimer = 0.0f;
     }
     
@@ -484,9 +496,9 @@ void Monster::findNewTarget() {
     Vec3 oldTarget = targetPosition;
     targetPosition = playerTarget->getPosition();
     
-    std::cout << "Monster " << getName() << " found new target: (" 
-              << targetPosition.x << ", " << targetPosition.y << ", " << targetPosition.z << ")" << std::endl;
-    std::cout << "  Previous target: (" << oldTarget.x << ", " << oldTarget.y << ", " << oldTarget.z << ")" << std::endl;
+    // std::cout << "Monster " << getName() << " found new target: (" 
+    //           << targetPosition.x << ", " << targetPosition.y << ", " << targetPosition.z << ")" << std::endl;
+    // std::cout << "  Previous target: (" << oldTarget.x << ", " << oldTarget.y << ", " << oldTarget.z << ")" << std::endl;
 }
 
 void Monster::moveTowardsTarget(float deltaTime) {
@@ -506,15 +518,15 @@ void Monster::moveTowardsTarget(float deltaTime) {
     static float chaseDebugTimer = 0.0f;
     chaseDebugTimer += deltaTime;
     if (chaseDebugTimer > 2.0f) { // Print every 2 seconds
-        std::cout << "=== CHASING DEBUG ===" << std::endl;
-        std::cout << "Monster " << getName() << " chasing player" << std::endl;
-        std::cout << "  Current position: (" << currentPos.x << ", " << currentPos.y << ", " << currentPos.z << ")" << std::endl;
-        std::cout << "  Target position: (" << targetPos.x << ", " << targetPos.y << ", " << targetPos.z << ")" << std::endl;
-        std::cout << "  Path direction: (" << direction.x << ", " << direction.y << ", " << direction.z << ")" << std::endl;
-        std::cout << "  Distance: " << distance << " units" << std::endl;
-        std::cout << "  Move speed: " << moveSpeed << std::endl;
-        std::cout << "  Is stuck: " << (isStuck ? "YES" : "NO") << std::endl;
-        std::cout << "===================" << std::endl;
+        // std::cout << "=== CHASING DEBUG ===" << std::endl;
+        // std::cout << "Monster " << getName() << " chasing player" << std::endl;
+        // std::cout << "  Current position: (" << currentPos.x << ", " << currentPos.y << ", " << currentPos.z << ")" << std::endl;
+        // std::cout << "  Target position: (" << targetPos.x << ", " << targetPos.y << ", " << targetPos.z << ")" << std::endl;
+        // std::cout << "  Path direction: (" << direction.x << ", " << direction.y << ", " << direction.z << ")" << std::endl;
+        // std::cout << "  Distance: " << distance << " units" << std::endl;
+        // std::cout << "  Move speed: " << moveSpeed << std::endl;
+        // std::cout << "  Is stuck: " << (isStuck ? "YES" : "NO") << std::endl;
+        // std::cout << "===================" << std::endl;
         chaseDebugTimer = 0.0f;
     }
     
@@ -527,13 +539,27 @@ void Monster::moveTowardsTarget(float deltaTime) {
         // Set rotation to face movement direction
         setRotationFromDirection(direction);
         
-        // Move towards target
+        // Move towards target with smooth interpolation
         float moveDistance = moveSpeed * deltaTime;
-        Vec3 newPos = currentPos + direction * moveDistance;
-        setPosition(newPos);
-        
-        // Update stuck detection
-        updateStuckDetection(currentPos, newPos, deltaTime);
+        if (distance < moveDistance) {
+            setPosition(targetPos);
+            // std::cout << "Monster " << getName() << " reached target: (" << targetPos.x << ", " << targetPos.y << ", " << targetPos.z << ")" << std::endl;
+        } else {
+            Vec3 newPos = currentPos + direction * moveDistance;
+            setPosition(newPos);
+            
+            // Debug: Print chasing movement every frame to see if it's smooth
+            static int chaseMovementDebugCounter = 0;
+            chaseMovementDebugCounter++;
+            if (chaseMovementDebugCounter % 60 == 0) { // Print every 60 frames (1 second at 60fps)
+                std::cout << "Monster " << getName() << " smooth chasing: (" 
+                         << newPos.x << ", " << newPos.y << ", " << newPos.z 
+                         << ") deltaTime: " << deltaTime << " moveDistance: " << moveDistance << std::endl;
+            }
+            
+            // Update stuck detection
+            updateStuckDetection(currentPos, newPos, deltaTime);
+        }
     }
 }
 
@@ -549,13 +575,13 @@ void Monster::patrol(float deltaTime) {
     static float patrolDebugTimer = 0.0f;
     patrolDebugTimer += deltaTime;
     if (patrolDebugTimer > 3.0f) {
-        std::cout << "=== PATROL STATUS ===" << std::endl;
-        std::cout << "Monster " << getName() << " patrolling" << std::endl;
-        std::cout << "  Current position: (" << currentPos.x << ", " << currentPos.y << ", " << currentPos.z << ")" << std::endl;
-        std::cout << "  Target position: (" << targetPosition.x << ", " << targetPosition.y << ", " << targetPosition.z << ")" << std::endl;
-        std::cout << "  Distance to target: " << distanceToTarget << " units" << std::endl;
-        std::cout << "  Move timer: " << moveTimer << "s" << std::endl;
-        std::cout << "  Move speed: " << moveSpeed << std::endl;
+        // std::cout << "=== PATROL STATUS ===" << std::endl;
+        // std::cout << "Monster " << getName() << " patrolling" << std::endl;
+        // std::cout << "  Current position: (" << currentPos.x << ", " << currentPos.y << ", " << currentPos.z << ")" << std::endl;
+        // std::cout << "  Target position: (" << targetPosition.x << ", " << targetPosition.y << ", " << targetPosition.z << ")" << std::endl;
+        // std::cout << "  Distance to target: " << distanceToTarget << " units" << std::endl;
+        // std::cout << "  Move timer: " << moveTimer << "s" << std::endl;
+        // std::cout << "  Move speed: " << moveSpeed << std::endl;
         patrolDebugTimer = 0.0f;
     }
     
@@ -571,11 +597,11 @@ void Monster::patrol(float deltaTime) {
         }
         
         // Debug output for patrol target changes
-        std::cout << "Monster " << getName() << " changing patrol target from (" 
-                  << oldTarget.x << ", " << oldTarget.y << ", " << oldTarget.z 
-                  << ") to (" << targetPosition.x << ", " << targetPosition.y << ", " << targetPosition.z << ")" << std::endl;
-        std::cout << "  Distance to old target was: " << distanceToTarget << " units" << std::endl;
-        std::cout << "  New rotation: (" << getRotation().x << ", " << getRotation().y << ", " << getRotation().z << ") degrees" << std::endl;
+        // std::cout << "Monster " << getName() << " changing patrol target from (" 
+        //           << oldTarget.x << ", " << oldTarget.y << ", " << oldTarget.z 
+        //           << ") to (" << targetPosition.x << ", " << targetPosition.y << ", " << targetPosition.z << ")" << std::endl;
+        // std::cout << "  Distance to old target was: " << distanceToTarget << " units" << std::endl;
+        // std::cout << "  New rotation: (" << getRotation().x << ", " << getRotation().y << ", " << getRotation().z << ") degrees" << std::endl;
     }
     
     // Move towards current patrol target
@@ -591,15 +617,23 @@ void Monster::patrol(float deltaTime) {
         // Set rotation to face movement direction  
         setRotationFromDirection(direction);
         
-        // Move towards target
+        // Move towards target with smooth interpolation
         float moveDistance = moveSpeed * deltaTime;
         if (distance < moveDistance) {
             setPosition(targetPosition);
-            std::cout << "Monster " << getName() << " reached patrol target: (" << targetPosition.x << ", " << targetPosition.y << ", " << targetPosition.z << ")" << std::endl;
+            // std::cout << "Monster " << getName() << " reached patrol target: (" << targetPosition.x << ", " << targetPosition.y << ", " << targetPosition.z << ")" << std::endl;
         } else {
             Vec3 newPos = currentPos + direction * moveDistance;
             setPosition(newPos);
-            std::cout << "Monster " << getName() << " patrolling to: (" << newPos.x << ", " << newPos.y << ", " << newPos.z << ")" << std::endl;
+            
+            // Debug: Print movement every frame to see if it's smooth
+            static int movementDebugCounter = 0;
+            movementDebugCounter++;
+            if (movementDebugCounter % 60 == 0) { // Print every 60 frames (1 second at 60fps)
+                std::cout << "Monster " << getName() << " smooth movement: (" 
+                         << newPos.x << ", " << newPos.y << ", " << newPos.z 
+                         << ") deltaTime: " << deltaTime << " moveDistance: " << moveDistance << std::endl;
+            }
         }
     }
 }
@@ -610,8 +644,8 @@ void Monster::attack() {
     // Use stateTimer as a simple time counter for attack cooldown
     if (stateTimer >= attackCooldown) {
         // Implement actual attack logic
-        std::cout << "=== MONSTER ATTACK ===" << std::endl;
-        std::cout << "Monster " << getName() << " attacks player for " << attackDamage << " damage!" << std::endl;
+        // std::cout << "=== MONSTER ATTACK ===" << std::endl;
+        // std::cout << "Monster " << getName() << " attacks player for " << attackDamage << " damage!" << std::endl;
         
         // Deal damage to player
         try {
@@ -619,18 +653,18 @@ void Monster::attack() {
             Player* player = dynamic_cast<Player*>(playerTarget);
             if (player) {
                 player->takeDamage(attackDamage, this);
-                std::cout << "Successfully dealt " << attackDamage << " damage to player!" << std::endl;
+                // std::cout << "Successfully dealt " << attackDamage << " damage to player!" << std::endl;
             } else {
                 // If not a Player, try to call takeDamage if it exists
                 // This is a fallback for other GameObject types that might have takeDamage
-                std::cout << "Player target is not a Player object, cannot deal damage" << std::endl;
+                // std::cout << "Player target is not a Player object, cannot deal damage" << std::endl;
             }
-        } catch (const std::exception& e) {
-            std::cout << "Error dealing damage to player: " << e.what() << std::endl;
+        } catch (const std::exception&) {
+            // std::cout << "Error dealing damage to player: " << e.what() << std::endl;
         }
         
-        std::cout << "Attack cooldown: " << attackCooldown << " seconds" << std::endl;
-        std::cout << "=====================" << std::endl;
+        // std::cout << "Attack cooldown: " << attackCooldown << " seconds" << std::endl;
+        // std::cout << "=====================" << std::endl;
         
         // Reset attack timer
         lastAttackTime = stateTimer;
@@ -647,17 +681,17 @@ void Monster::setState(MonsterState newState) {
     // Debug output for state changes
     std::string oldStateName = getStateName(oldState);
     std::string newStateName = getStateName(newState);
-    std::cout << "=== MONSTER STATE CHANGE ===" << std::endl;
-    std::cout << "Monster: " << getName() << std::endl;
-    std::cout << "State: " << oldStateName << " -> " << newStateName << std::endl;
-    std::cout << "Position: (" << getPosition().x << ", " << getPosition().y << ", " << getPosition().z << ")" << std::endl;
+    // std::cout << "=== MONSTER STATE CHANGE ===" << std::endl;
+    // std::cout << "Monster: " << getName() << std::endl;
+    // std::cout << "State: " << oldStateName << " -> " << newStateName << std::endl;
+    // std::cout << "Position: (" << getPosition().x << ", " << getPosition().y << ", " << getPosition().z << ")" << std::endl;
     if (playerTarget) {
         float distance = getDistanceToPlayer();
-        std::cout << "Distance to player: " << distance << " units" << std::endl;
-        std::cout << "Detection range: " << detectionRange << ", Danger range: " << dangerRange << ", Attack range: " << attackRange << std::endl;
-        std::cout << "In danger zone: " << (isPlayerInDangerZone() ? "YES" : "NO") << std::endl;
+        // std::cout << "Distance to player: " << distance << " units" << std::endl;
+        // std::cout << "Detection range: " << detectionRange << ", Danger range: " << dangerRange << ", Attack range: " << attackRange << std::endl;
+        // std::cout << "In danger zone: " << (isPlayerInDangerZone() ? "YES" : "NO") << std::endl;
     }
-    std::cout << "===========================" << std::endl;
+    // std::cout << "===========================" << std::endl;
     
     // Handle state-specific behavior
     if (newState == MonsterState::Chasing) {
@@ -669,7 +703,7 @@ void Monster::setState(MonsterState newState) {
             Vec3 direction = playerTarget->getPosition() - getPosition();
             if (direction.x != 0.0f || direction.z != 0.0f) {
                 setRotationFromDirection(direction);
-                std::cout << "Monster " << getName() << " rotated to face player when starting chase" << std::endl;
+                // std::cout << "Monster " << getName() << " rotated to face player when starting chase" << std::endl;
             }
         }
         
@@ -678,13 +712,13 @@ void Monster::setState(MonsterState newState) {
             if (!isCharging) {
                 isCharging = true;
                 moveSpeed = chargeSpeed;  // Boost speed for charging
-                std::cout << "Monster " << getName() << " CHARGING! Speed boosted to " << chargeSpeed << std::endl;
+                // std::cout << "Monster " << getName() << " CHARGING! Speed boosted to " << chargeSpeed << std::endl;
             }
         } else {
             if (isCharging) {
                 isCharging = false;
                 moveSpeed = baseSpeed;  // Return to normal speed
-                std::cout << "Monster " << getName() << " stopped charging. Speed returned to " << baseSpeed << std::endl;
+                // std::cout << "Monster " << getName() << " stopped charging. Speed returned to " << baseSpeed << std::endl;
             }
         }
     } else {
@@ -692,7 +726,7 @@ void Monster::setState(MonsterState newState) {
         if (isCharging) {
             isCharging = false;
             moveSpeed = baseSpeed;  // Return to normal speed
-            std::cout << "Monster " << getName() << " stopped charging. Speed returned to " << baseSpeed << std::endl;
+            // std::cout << "Monster " << getName() << " stopped charging. Speed returned to " << baseSpeed << std::endl;
         }
     }
     
@@ -700,23 +734,24 @@ void Monster::setState(MonsterState newState) {
     resetTimers();
     
     // Trigger visual effects for state change
-    flashStateChange();
+    // flashStateChange(); // DISABLED: Causing unwanted flashing
     
-    // Set pulsing based on state
-    switch (newState) {
-        case MonsterState::Alert:
-            setPulsing(true, 3.0f); // Fast pulsing when alert
-            break;
-        case MonsterState::Chasing:
-            setPulsing(true, 4.0f); // Very fast pulsing when chasing
-            break;
-        case MonsterState::Attacking:
-            setPulsing(true, 6.0f); // Extremely fast pulsing when attacking
-            break;
-        default:
-            setPulsing(false); // No pulsing for other states
-            break;
-    }
+    // Set pulsing based on state - DISABLED to prevent flashing
+    // switch (newState) {
+    //     case MonsterState::Alert:
+    //         setPulsing(true, 3.0f); // Fast pulsing when alert
+    //         break;
+    //     case MonsterState::Chasing:
+    //         setPulsing(true, 4.0f); // Very fast pulsing when chasing
+    //         break;
+    //     case MonsterState::Attacking:
+    //         setPulsing(true, 6.0f); // Extremely fast pulsing when attacking
+    //         break;
+    //     default:
+    //         setPulsing(false); // No pulsing for other states
+    //         break;
+    // }
+    setPulsing(false); // Disable all pulsing to prevent flashing
     
     // Call state change callback
     onStateChange(oldState, newState);
@@ -734,7 +769,7 @@ void Monster::setHealth(float newHealth) {
 void Monster::flashDamage() {
     isFlashing = true;
     damageFlashTimer = 0.5f; // Flash for 0.5 seconds (increased from 0.3)
-    std::cout << "Monster " << getName() << " flashing damage for " << damageFlashTimer << " seconds" << std::endl;
+    // std::cout << "Monster " << getName() << " flashing damage for " << damageFlashTimer << " seconds" << std::endl;
 }
 
 void Monster::updateVisualEffects(float deltaTime) {
@@ -769,9 +804,9 @@ void Monster::configureMonster(MonsterType monsterType) {
     switch (type) {
         case MonsterType::Xenomorph:
             maxHealth = 100.0f;
-            baseSpeed = 8.0f;      // Much faster for testing
+            baseSpeed = 2.0f;      // Slower for better gameplay
             moveSpeed = baseSpeed;
-            chargeSpeed = 15.0f;   // Very fast charging
+            chargeSpeed = 4.0f;    // Slower charging
             attackRange = 2.0f;
             attackDamage = 25.0f;
             detectionRange = 5.0f;  // Reduced detection range
@@ -785,9 +820,9 @@ void Monster::configureMonster(MonsterType monsterType) {
             
         case MonsterType::Runner:
             maxHealth = 50.0f;
-            baseSpeed = 12.0f;     // Very fast runners
+            baseSpeed = 3.0f;      // Slower runners
             moveSpeed = baseSpeed;
-            chargeSpeed = 20.0f;   // Extremely fast when charging
+            chargeSpeed = 6.0f;    // Slower charging
             attackRange = 1.5f;
             attackDamage = 15.0f;
             detectionRange = 15.0f;
@@ -801,9 +836,9 @@ void Monster::configureMonster(MonsterType monsterType) {
             
         case MonsterType::Tank:
             maxHealth = 200.0f;
-            baseSpeed = 5.0f;      // Faster than before
+            baseSpeed = 1.5f;      // Slower tanks
             moveSpeed = baseSpeed;
-            chargeSpeed = 10.0f;   // Faster charging
+            chargeSpeed = 3.0f;    // Slower charging
             attackRange = 3.0f;
             attackDamage = 40.0f;
             detectionRange = 8.0f;
@@ -875,14 +910,14 @@ Vec3 Monster::getRandomPatrolPosition() const {
     Vec3 newTarget = currentPos + offset;
     
     // Debug output for patrol target generation
-    std::cout << "=== PATROL TARGET GENERATION ===" << std::endl;
-    std::cout << "Monster: " << getName() << std::endl;
-    std::cout << "Current position: (" << currentPos.x << ", " << currentPos.y << ", " << currentPos.z << ")" << std::endl;
-    std::cout << "Generated target: (" << newTarget.x << ", " << newTarget.y << ", " << newTarget.z << ")" << std::endl;
-    std::cout << "Offset: (" << offset.x << ", " << offset.y << ", " << offset.z << ")" << std::endl;
-    std::cout << "Angle: " << (angle * 180.0f / 3.14159f) << "°, Distance: " << distance << " units" << std::endl;
-    std::cout << "Distance to target: " << sqrt(offset.x * offset.x + offset.z * offset.z) << " units" << std::endl;
-    std::cout << "===============================" << std::endl;
+    // std::cout << "=== PATROL TARGET GENERATION ===" << std::endl;
+    // std::cout << "Monster: " << getName() << std::endl;
+    // std::cout << "Current position: (" << currentPos.x << ", " << currentPos.y << ", " << currentPos.z << ")" << std::endl;
+    // std::cout << "Generated target: (" << newTarget.x << ", " << newTarget.y << ", " << newTarget.z << ")" << std::endl;
+    // std::cout << "Offset: (" << offset.x << ", " << offset.y << ", " << offset.z << ")" << std::endl;
+    // std::cout << "Angle: " << (angle * 180.0f / 3.14159f) << "°, Distance: " << distance << " units" << std::endl;
+    // std::cout << "Distance to target: " << sqrt(offset.x * offset.x + offset.z * offset.z) << " units" << std::endl;
+    // std::cout << "===============================" << std::endl;
     
     return newTarget;
 }
@@ -908,8 +943,8 @@ std::string Monster::getStateName(MonsterState state) const {
 
 void Monster::setTargetPosition(const Vec3& position) {
     targetPosition = position;
-    std::cout << "Monster " << getName() << " target position set to: (" 
-              << position.x << ", " << position.y << ", " << position.z << ")" << std::endl;
+    // std::cout << "Monster " << getName() << " target position set to: (" 
+    //           << position.x << ", " << position.y << ", " << position.z << ")" << std::endl;
 }
 
 void Monster::setRotationFromDirection(const Vec3& direction) {
@@ -936,13 +971,13 @@ void Monster::setRotationFromDirection(const Vec3& direction) {
     rotationDebugTimer += 0.016f; // Approximate frame time
     
     if (rotationDebugTimer > 2.0f) { // Debug every 2 seconds
-        std::cout << "=== MONSTER ROTATION ===" << std::endl;
-        std::cout << "Monster: " << getName() << std::endl;
-        std::cout << "Movement direction: (" << direction.x << ", " << direction.y << ", " << direction.z << ")" << std::endl;
-        std::cout << "Old rotation: (" << oldRotation.x << ", " << oldRotation.y << ", " << oldRotation.z << ") degrees" << std::endl;
-        std::cout << "New rotation: (" << currentRotation.x << ", " << currentRotation.y << ", " << currentRotation.z << ") degrees" << std::endl;
-        std::cout << "Yaw angle: " << yawDegrees << " degrees" << std::endl;
-        std::cout << "=======================" << std::endl;
+        // std::cout << "=== MONSTER ROTATION ===" << std::endl;
+        // std::cout << "Monster: " << getName() << std::endl;
+        // std::cout << "Movement direction: (" << direction.x << ", " << direction.y << ", " << direction.z << ")" << std::endl;
+        // std::cout << "Old rotation: (" << oldRotation.x << ", " << oldRotation.y << ", " << oldRotation.z << ") degrees" << std::endl;
+        // std::cout << "New rotation: (" << currentRotation.x << ", " << currentRotation.y << ", " << currentRotation.z << ") degrees" << std::endl;
+        // std::cout << "Yaw angle: " << yawDegrees << " degrees" << std::endl;
+        // std::cout << "=======================" << std::endl;
         rotationDebugTimer = 0.0f;
     }
 }
@@ -975,9 +1010,9 @@ void Monster::onDamage(float damage, GameObject* attacker) {
 
 void Monster::onDeath() {
     // Override point for custom death behavior
-    std::cout << "=== onDeath() CALLBACK STARTING ===" << std::endl;
-    std::cout << "Monster " << getName() << " died!" << std::endl;
-    std::cout << "=== onDeath() CALLBACK COMPLETED ===" << std::endl;
+    // std::cout << "=== onDeath() CALLBACK STARTING ===" << std::endl;
+    // std::cout << "Monster " << getName() << " died!" << std::endl;
+    // std::cout << "=== onDeath() CALLBACK COMPLETED ===" << std::endl;
 }
 
 void Monster::onStateChange(MonsterState oldState, MonsterState newState) {
@@ -988,38 +1023,38 @@ void Monster::setupMonsterMesh() {
     // Load the actual Xenomorph model
     std::string modelPath = "Resources/Objects/Xenomorph/model.obj";
     
-    std::cout << "Loading Xenomorph model from: " << modelPath << std::endl;
+    // std::cout << "Loading Xenomorph model from: " << modelPath << std::endl;
     
     // Load the OBJ model data
     OBJMeshData meshData = OBJLoader::loadOBJ(modelPath, 1.0f); // Scale of 1.0
     
     // Load materials from MTL file
     std::string mtlPath = MaterialLoader::getMTLPathFromOBJ(modelPath);
-    std::cout << "Trying to load MTL file from: " << mtlPath << std::endl;
+    // std::cout << "Trying to load MTL file from: " << mtlPath << std::endl;
     
     if (MaterialLoader::isValidMTLFile(mtlPath)) {
         monsterMaterials = MaterialLoader::loadMTL(mtlPath);
-        std::cout << "Loaded " << monsterMaterials.getMaterialCount() << " materials for monster" << std::endl;
+        // std::cout << "Loaded " << monsterMaterials.getMaterialCount() << " materials for monster" << std::endl;
         
         // Create material groups for multi-material rendering
         createMaterialGroups(meshData);
     } else {
-        std::cout << "Warning: MTL file not found at " << mtlPath << std::endl;
-        std::cout << "Trying alternative path: Resources/Objects/Xenomorph/materials.mtl" << std::endl;
+        // std::cout << "Warning: MTL file not found at " << mtlPath << std::endl;
+        // std::cout << "Trying alternative path: Resources/Objects/Xenomorph/materials.mtl" << std::endl;
         
         // Try alternative path
         std::string altMtlPath = "Resources/Objects/Xenomorph/materials.mtl";
         if (MaterialLoader::isValidMTLFile(altMtlPath)) {
             monsterMaterials = MaterialLoader::loadMTL(altMtlPath);
-            std::cout << "Loaded " << monsterMaterials.getMaterialCount() << " materials from alternative path" << std::endl;
+            // std::cout << "Loaded " << monsterMaterials.getMaterialCount() << " materials from alternative path" << std::endl;
             createMaterialGroups(meshData);
         } else {
-            std::cout << "Failed to load materials from both paths" << std::endl;
+            // std::cout << "Failed to load materials from both paths" << std::endl;
         }
     }
     
     if (!meshData.isValid()) {
-        std::cerr << "Failed to load Xenomorph model for '" << getName() << "', falling back to cube" << std::endl;
+        // std::cerr << "Failed to load Xenomorph model for '" << getName() << "', falling back to cube" << std::endl;
         
         // Fallback to simple cube if model loading fails
         std::vector<float> vertices = {
@@ -1053,9 +1088,9 @@ void Monster::setupMonsterMesh() {
         
         mesh = std::make_unique<Mesh>();
         if (!mesh->createMesh(vertices, indices)) {
-            std::cerr << "Failed to create fallback cube mesh for '" << getName() << "'" << std::endl;
+            // std::cerr << "Failed to create fallback cube mesh for '" << getName() << "'" << std::endl;
         } else {
-            std::cout << "Created fallback cube mesh for '" << getName() << "'" << std::endl;
+            // std::cout << "Created fallback cube mesh for '" << getName() << "'" << std::endl;
         }
         return;
     }
@@ -1080,24 +1115,24 @@ void Monster::setupMonsterMesh() {
         basicVertexData.push_back(meshData.vertices[i + 7]); // texCoord.v
     }
     
-    std::cout << "=== XENOMORPH MESH CONVERSION ===" << std::endl;
-    std::cout << "Original OBJ data: " << meshData.vertices.size() << " floats" << std::endl;
-    std::cout << "Converted data: " << basicVertexData.size() << " floats" << std::endl;
-    std::cout << "Vertices: " << (meshData.vertices.size() / 8) << ", Indices: " << meshData.indices.size() << std::endl;
-    std::cout << "First few vertices: ";
+    // std::cout << "=== XENOMORPH MESH CONVERSION ===" << std::endl;
+    // std::cout << "Original OBJ data: " << meshData.vertices.size() << " floats" << std::endl;
+    // std::cout << "Converted data: " << basicVertexData.size() << " floats" << std::endl;
+    // std::cout << "Vertices: " << (meshData.vertices.size() / 8) << ", Indices: " << meshData.indices.size() << std::endl;
+    // std::cout << "First few vertices: ";
     for (int i = 0; i < std::min(10, (int)basicVertexData.size()); i++) {
-        std::cout << basicVertexData[i] << " ";
+        // std::cout << basicVertexData[i] << " ";
     }
-    std::cout << "..." << std::endl;
+    // std::cout << "..." << std::endl;
     
     if (!mesh->createMeshWithTexCoords(basicVertexData, meshData.indices)) {
-        std::cerr << "Failed to create Xenomorph mesh for '" << getName() << "'" << std::endl;
+        // std::cerr << "Failed to create Xenomorph mesh for '" << getName() << "'" << std::endl;
     } else {
-        std::cout << "Successfully loaded Xenomorph model for '" << getName() << "'" << std::endl;
-        std::cout << "  Vertices: " << meshData.vertexCount << std::endl;
-        std::cout << "  Triangles: " << meshData.triangleCount << std::endl;
-        std::cout << "  Bounds: " << meshData.boundingBoxMin.x << "," << meshData.boundingBoxMin.y << "," << meshData.boundingBoxMin.z 
-                  << " to " << meshData.boundingBoxMax.x << "," << meshData.boundingBoxMax.y << "," << meshData.boundingBoxMax.z << std::endl;
+        // std::cout << "Successfully loaded Xenomorph model for '" << getName() << "'" << std::endl;
+        // std::cout << "  Vertices: " << meshData.vertexCount << std::endl;
+        // std::cout << "  Triangles: " << meshData.triangleCount << std::endl;
+        // std::cout << "  Bounds: " << meshData.boundingBoxMin.x << "," << meshData.boundingBoxMin.y << "," << meshData.boundingBoxMin.z 
+        //           << " to " << meshData.boundingBoxMax.x << "," << meshData.boundingBoxMax.y << "," << meshData.boundingBoxMax.z << std::endl;
     }
 }
 
@@ -1106,34 +1141,34 @@ void Monster::setupMonsterMaterial() {
     // Set default color for fallback rendering
     setColor(originalColor);
     
-    std::cout << "=== MONSTER MATERIAL SETUP ===" << std::endl;
-    std::cout << "Monster: " << getName() << std::endl;
-    std::cout << "Original color: " << originalColor.x << ", " << originalColor.y << ", " << originalColor.z << std::endl;
+    // std::cout << "=== MONSTER MATERIAL SETUP ===" << std::endl;
+    // std::cout << "Monster: " << getName() << std::endl;
+    // std::cout << "Original color: " << originalColor.x << ", " << originalColor.y << ", " << originalColor.z << std::endl;
     
     if (monsterMaterials.getMaterialCount() > 0) {
-        std::cout << "  Loaded " << monsterMaterials.getMaterialCount() << " materials from MTL file" << std::endl;
-        std::cout << "  Created " << materialGroups.size() << " material groups" << std::endl;
+        // std::cout << "  Loaded " << monsterMaterials.getMaterialCount() << " materials from MTL file" << std::endl;
+        // std::cout << "  Created " << materialGroups.size() << " material groups" << std::endl;
         
         // Debug: List material group colors
         for (size_t i = 0; i < materialGroups.size(); i++) {
-            std::cout << "    Group " << i << " color: " << materialGroups[i].color.x << ", " 
-                      << materialGroups[i].color.y << ", " << materialGroups[i].color.z << std::endl;
+            // std::cout << "    Group " << i << " color: " << materialGroups[i].color.x << ", " 
+            //               << materialGroups[i].color.y << ", " << materialGroups[i].color.z << std::endl;
         }
     } else {
-        std::cout << "  No materials loaded - using fallback color" << std::endl;
-        std::cout << "  Fallback color: " << originalColor.x << ", " << originalColor.y << ", " << originalColor.z << std::endl;
+        // std::cout << "  No materials loaded - using fallback color" << std::endl;
+        // std::cout << "  Fallback color: " << originalColor.x << ", " << originalColor.y << ", " << originalColor.z << std::endl;
     }
     
     // CRITICAL: Verify the color was set
     Vec3 currentSetColor = getCurrentColor();
-    std::cout << "  Final set color: " << currentSetColor.x << ", " << currentSetColor.y << ", " << currentSetColor.z << std::endl;
-    std::cout << "=========================" << std::endl;
+    // std::cout << "  Final set color: " << currentSetColor.x << ", " << currentSetColor.y << ", " << currentSetColor.z << std::endl;
+    // std::cout << "=========================" << std::endl;
 }
 
 void Monster::createMaterialGroups(const OBJMeshData& objData) {
     // Implementation for creating material groups from OBJ data
     // Parse the OBJ data and create material groups based on material assignments
-    std::cout << "Creating material groups from OBJ data..." << std::endl;
+    // std::cout << "Creating material groups from OBJ data..." << std::endl;
     
     // Clear existing material groups
     materialGroups.clear();
@@ -1178,14 +1213,14 @@ void Monster::createMaterialGroups(const OBJMeshData& objData) {
                 group.color = mat->diffuse;
                 materialGroups.push_back(group);
                 
-                std::cout << "  Material group '" << materialName << "': " 
-                          << group.indices.size() << " indices, color(" 
-                          << group.color.x << ", " << group.color.y << ", " << group.color.z << ")" << std::endl;
+                // std::cout << "  Material group '" << materialName << "': " 
+                //           << group.indices.size() << " indices, color(" 
+                //           << group.color.x << ", " << group.color.y << ", " << group.color.z << ")" << std::endl;
             }
         }
     }
     
-    std::cout << "Created " << materialGroups.size() << " material groups for monster" << std::endl;
+    // std::cout << "Created " << materialGroups.size() << " material groups for monster" << std::endl;
 }
 
 void Monster::updateDamageFlash(float deltaTime) {
@@ -1193,7 +1228,7 @@ void Monster::updateDamageFlash(float deltaTime) {
         damageFlashTimer -= deltaTime;
         if (damageFlashTimer <= 0.0f) {
             isFlashing = false;
-            std::cout << "Monster " << getName() << " damage flash ended" << std::endl;
+            // std::cout << "Monster " << getName() << " damage flash ended" << std::endl;
         }
     }
 }
@@ -1261,86 +1296,80 @@ MonsterState Monster::determineNextState() {
     return MonsterState::Patrolling;
 }
 
-// Simplified health bar methods
+// Health bar methods - NEW: Using texture-based system
 void Monster::updateHealthBar() {
-    // Health bar is now rendered inline - no separate object to update
-    // This method is kept for compatibility but does nothing
+    if (textureHealthBar && showHealthBar) {
+        textureHealthBar->setHealth(health, maxHealth);
+        textureHealthBar->update(0.016f); // Approximate frame time
+    }
 }
 
-void Monster::renderHealthBar(const Renderer& renderer, const Camera& camera) {
-    if (!showHealthBar || isDead()) return;
-    
-    // Simple inline health bar rendering
-    float healthPercentage = getHealthPercentage();
-    if (healthPercentage <= 0.0f) return;
-    
-    // Calculate health bar position above monster
-    Vec3 monsterPos = getPosition();
-    Vec3 healthBarPos = Vec3(monsterPos.x, monsterPos.y + healthBarOffsetY, monsterPos.z);
-    
-    // Calculate health bar colors based on health percentage
-    Vec3 healthColor;
-    if (healthPercentage > 0.6f) {
-        healthColor = Vec3(0.0f, 1.0f, 0.0f); // Green
-    } else if (healthPercentage > 0.3f) {
-        healthColor = Vec3(1.0f, 1.0f, 0.0f); // Yellow
-    } else {
-        healthColor = Vec3(1.0f, 0.0f, 0.0f); // Red
+void Monster::renderHealthBar(const Camera& camera) {
+    // IMMEDIATE DEBUG: Check why health bars aren't rendering
+    static int immediateDebugCount = 0;
+    immediateDebugCount++;
+    if (immediateDebugCount % 30 == 0) { // Every 0.5 seconds at 60fps
+        std::cout << "*** MONSTER RENDER HEALTH BAR CALLED ***" << std::endl;
+        std::cout << "Monster: " << getName() << std::endl;
+        std::cout << "textureHealthBar exists: " << (textureHealthBar ? "YES" : "NO") << std::endl;
+        std::cout << "showHealthBar: " << (showHealthBar ? "YES" : "NO") << std::endl;
+        std::cout << "health: " << health << "/" << maxHealth << std::endl;
+        std::cout << "isAlive(): " << (isAlive() ? "YES" : "NO") << std::endl;
+        std::cout << "******************************************" << std::endl;
     }
     
-    // Simple health bar rendering using basic OpenGL
-    glPushMatrix();
-    glTranslatef(healthBarPos.x, healthBarPos.y, healthBarPos.z);
-    
-    // Make health bar face camera (billboard effect)
-    Vec3 cameraPos = camera.getPosition();
-    Vec3 toCamera = Vec3(cameraPos.x - healthBarPos.x, 0, cameraPos.z - healthBarPos.z);
-    toCamera.normalize();
-    float angle = atan2(toCamera.x, toCamera.z) * 180.0f / M_PI;
-    glRotatef(angle, 0, 1, 0);
-    
-    // Render background
-    glColor3f(0.2f, 0.2f, 0.2f);
-    glBegin(GL_QUADS);
-    glVertex3f(-healthBarWidth/2, -healthBarHeight/2, 0);
-    glVertex3f(healthBarWidth/2, -healthBarHeight/2, 0);
-    glVertex3f(healthBarWidth/2, healthBarHeight/2, 0);
-    glVertex3f(-healthBarWidth/2, healthBarHeight/2, 0);
-    glEnd();
-    
-    // Render health fill
-    float healthWidth = healthBarWidth * healthPercentage;
-    glColor3f(healthColor.x, healthColor.y, healthColor.z);
-    glBegin(GL_QUADS);
-    glVertex3f(-healthBarWidth/2, -healthBarHeight/2, 0.01f);
-    glVertex3f(-healthBarWidth/2 + healthWidth, -healthBarHeight/2, 0.01f);
-    glVertex3f(-healthBarWidth/2 + healthWidth, healthBarHeight/2, 0.01f);
-    glVertex3f(-healthBarWidth/2, healthBarHeight/2, 0.01f);
-    glEnd();
-    
-    // Render border
-    glColor3f(1.0f, 1.0f, 1.0f);
-    glLineWidth(2.0f);
-    glBegin(GL_LINE_LOOP);
-    glVertex3f(-healthBarWidth/2, -healthBarHeight/2, 0.02f);
-    glVertex3f(healthBarWidth/2, -healthBarHeight/2, 0.02f);
-    glVertex3f(healthBarWidth/2, healthBarHeight/2, 0.02f);
-    glVertex3f(-healthBarWidth/2, healthBarHeight/2, 0.02f);
-    glEnd();
-    glLineWidth(1.0f);
-    
-    glPopMatrix();
+    // Only render health bars for alive monsters
+    if (textureHealthBar && showHealthBar && isAlive()) {
+        // Debug: Compare raw position vs model matrix position
+        Vec3 rawPosition = getPosition();
+        Mat4 monsterMatrix = getModelMatrix();
+        Vec3 matrixPosition = Vec3(monsterMatrix.m[12], monsterMatrix.m[13], monsterMatrix.m[14]);
+        
+        static int debugCount = 0;
+        debugCount++;
+        if (debugCount % 60 == 0) { // Every 1 second
+            std::cout << "=== MONSTER POSITION INVESTIGATION ===" << std::endl;
+            std::cout << "Monster name: " << getName() << std::endl;
+            std::cout << "Raw monster position: (" << rawPosition.x << ", " << rawPosition.y << ", " << rawPosition.z << ")" << std::endl;
+            std::cout << "Matrix position: (" << matrixPosition.x << ", " << matrixPosition.y << ", " << matrixPosition.z << ")" << std::endl;
+            std::cout << "Position difference: (" << (matrixPosition.x - rawPosition.x) << ", " << (matrixPosition.y - rawPosition.y) << ", " << (matrixPosition.z - rawPosition.z) << ")" << std::endl;
+            
+            // Check if monster is actually being rendered
+            std::cout << "Monster active: " << (isActive ? "YES" : "NO") << std::endl;
+            std::cout << "Monster health: " << health << "/" << maxHealth << std::endl;
+            std::cout << "Monster state: " << static_cast<int>(state) << std::endl;
+            
+            // Print the actual model matrix to see what's happening
+            std::cout << "Model matrix:" << std::endl;
+            for (int i = 0; i < 4; i++) {
+                std::cout << "[" << monsterMatrix.m[i*4] << ", " << monsterMatrix.m[i*4+1] << ", " << monsterMatrix.m[i*4+2] << ", " << monsterMatrix.m[i*4+3] << "]" << std::endl;
+            }
+            std::cout << "======================================" << std::endl;
+        }
+        
+        // Use model matrix position (now that transformation order is fixed)
+        
+        // Additional debug: Show what position we're passing to health bar
+        if (debugCount % 600 == 0) {
+            std::cout << "=== PASSING TO HEALTH BAR ===" << std::endl;
+            std::cout << "Monster matrix position passed to health bar: (" << matrixPosition.x << ", " << matrixPosition.y << ", " << matrixPosition.z << ")" << std::endl;
+            std::cout << "Expected health bar world position: (" << matrixPosition.x << ", " << (matrixPosition.y + 2.5f) << ", " << (matrixPosition.z + 0.1f) << ")" << std::endl;
+            std::cout << "=============================" << std::endl;
+        }
+        
+        textureHealthBar->render(matrixPosition, camera);
+    }
 }
 
 // MonsterSpawner implementation
 MonsterSpawner::MonsterSpawner(Scene* scene, GameObject* player)
     : gameScene(scene),
       playerTarget(player),
-      maxMonsters(3),
-      spawnInterval(3.0f),  // Spawn faster for testing
+      maxMonsters(3),  // TESTING: Spawn 3 monsters to test health bar positioning
+      spawnInterval(0.1f),  // TESTING: Spawn extremely fast for multiple monster testing
       lastSpawnTime(0.0f),
-      spawnRadius(20.0f),  // Reasonable radius for visible spawning
-      spawnCenter(15.0f, 0.0f, 15.0f),  // Spawn away from player starting position
+      spawnRadius(8.0f),  // Spread monsters out for better health bar visibility testing
+      spawnCenter(10.0f, 0.0f, 10.0f),  // Spawn CLOSE to player starting position
       monsterTypes({MonsterType::Xenomorph}),
       activeMonsters(),
       currentWave(0),
@@ -1359,9 +1388,9 @@ MonsterSpawner::MonsterSpawner(Scene* scene, GameObject* player)
     // Seed random number generator for spawn positions
     srand(static_cast<unsigned int>(time(nullptr)));
     
-    std::cout << "MonsterSpawner initialized with spawn center: (" << spawnCenter.x << ", " << spawnCenter.y << ", " << spawnCenter.z << ")" << std::endl;
-    std::cout << "Spawn radius: " << spawnRadius << " units" << std::endl;
-    std::cout << "Spawn interval: " << spawnInterval << " seconds" << std::endl;
+    // std::cout << "MonsterSpawner initialized with spawn center: (" << spawnCenter.x << ", " << spawnCenter.y << ", " << spawnCenter.z << ")" << std::endl;
+    // std::cout << "Spawn radius: " << spawnRadius << " units" << std::endl;
+    // std::cout << "Spawn interval: " << spawnInterval << " seconds" << std::endl;
 }
 
 
@@ -1397,23 +1426,23 @@ void MonsterSpawner::update(float deltaTime) {
     static float debugTimer = 0.0f;
     debugTimer += deltaTime;
     if (debugTimer > 3.0f) { // Print every 3 seconds instead of every frame
-        std::cout << "=== MONSTER SPAWNER UPDATE ===" << std::endl;
-        std::cout << "Active monsters in tracking: " << activeMonsters.size() << std::endl;
+        // std::cout << "=== MONSTER SPAWNER UPDATE ===" << std::endl;
+        // std::cout << "Active monsters in tracking: " << activeMonsters.size() << std::endl;
         for (const auto& monster : activeMonsters) {
             if (monster) {
                 try {
                     // CRASH PREVENTION: Check if monster is still valid before accessing
                     if (monster->getActive() && !monster->isDead()) {
-                        std::cout << "Monster: " << monster->getName() << " - Dead: NO" << std::endl;
+                        // std::cout << "Monster: " << monster->getName() << " - Dead: NO" << std::endl;
                     } else {
-                        std::cout << "Monster: " << monster->getName() << " - Dead: YES (or inactive)" << std::endl;
+                        // std::cout << "Monster: " << monster->getName() << " - Dead: YES (or inactive)" << std::endl;
                     }
-                } catch (const std::exception& e) {
-                    std::cout << "Error accessing monster: " << e.what() << std::endl;
+                } catch (const std::exception&) {
+                    // std::cout << "Error accessing monster: " << e.what() << std::endl;
                 }
             }
         }
-        std::cout << "=============================" << std::endl;
+        // std::cout << "=============================" << std::endl;
         debugTimer = 0.0f;
     }
     
@@ -1487,7 +1516,7 @@ void MonsterSpawner::spawnMonsterAt(const Vec3& position, MonsterType type) {
         std::cout << "Monster position: (" << monsterPtr->getPosition().x << ", " << monsterPtr->getPosition().y << ", " << monsterPtr->getPosition().z << ")" << std::endl;
         std::cout << "Monster state: " << monsterPtr->getStateName(monsterPtr->getState()) << std::endl;
         std::cout << "Player target: " << (monsterPtr->getPlayerTarget() ? "SET" : "NULL") << std::endl;
-        std::cout << "Total active monsters: " << activeMonsters.size() << std::endl;
+        // std::cout << "Total active monsters: " << activeMonsters.size() << std::endl;
     }
 }
 
@@ -1513,7 +1542,7 @@ void MonsterSpawner::removeMonster(Monster* monster) {
         activeMonsters.end()
     );
     
-    std::cout << "Monster removed from MonsterSpawner: " << (monster ? monster->getName() : "Unknown") << std::endl;
+    // std::cout << "Monster removed from MonsterSpawner: " << (monster ? monster->getName() : "Unknown") << std::endl;
 }
 
 void MonsterSpawner::addSpawnPoint(const Vec3& point) {
@@ -1536,10 +1565,10 @@ void MonsterSpawner::removeDeadMonsters() {
     cleanupCallCount++;
     
     if (cleanupCallCount % 180 == 0) { // Print every 3 seconds
-        std::cout << "=== MONSTER CLEANUP DISABLED ===" << std::endl;
-        std::cout << "Active monsters in tracking: " << activeMonsters.size() << std::endl;
-        std::cout << "NOTE: Dead monsters remain in tracking to prevent crashes" << std::endl;
-        std::cout << "===============================" << std::endl;
+        // std::cout << "=== MONSTER CLEANUP DISABLED ===" << std::endl;
+        // std::cout << "Active monsters in tracking: " << activeMonsters.size() << std::endl;
+        // std::cout << "NOTE: Dead monsters remain in tracking to prevent crashes" << std::endl;
+        // std::cout << "===============================" << std::endl;
     }
 }
 
@@ -1553,23 +1582,22 @@ Vec3 MonsterSpawner::getRandomSpawnPosition() const {
         unsigned int spawnSeed = static_cast<unsigned int>(time(nullptr)) + spawnCount * 1000 + (spawnCount * 7);
         srand(spawnSeed);
         
-        // Generate random position around spawn center with MUCH better distribution
-        // Ensure monsters spawn far from center for visible movement
+        // Generate random position around spawn center - CLOSE to player
         float angle = (float)(rand() % 360) * 3.14159f / 180.0f;
-        float distance = 12.0f + (float)(rand() % (int)(spawnRadius - 12.0f)); // Minimum 12 units from center
+        float distance = 2.0f + (float)(rand() % (int)(spawnRadius - 2.0f)); // Minimum 2 units from center
         
         Vec3 pos = spawnCenter;
         pos.x += cos(angle) * distance;
         pos.z += sin(angle) * distance;
         
         // Debug output for spawn position
-        std::cout << "=== SPAWN POSITION GENERATION ===" << std::endl;
-        std::cout << "Spawn #" << spawnCount << " generated at: (" << pos.x << ", " << pos.y << ", " << pos.z << ")" << std::endl;
-        std::cout << "  From center: (" << spawnCenter.x << ", " << spawnCenter.y << ", " << spawnCenter.z << ")" << std::endl;
-        std::cout << "  Angle: " << (angle * 180.0f / 3.14159f) << "°, Distance: " << distance << " units" << std::endl;
-        std::cout << "  Spawn radius: " << spawnRadius << " units" << std::endl;
-        std::cout << "  Distance from origin: " << sqrt(pos.x * pos.x + pos.z * pos.z) << " units" << std::endl;
-        std::cout << "================================" << std::endl;
+        // std::cout << "=== SPAWN POSITION GENERATION ===" << std::endl;
+        // std::cout << "Spawn #" << spawnCount << " generated at: (" << pos.x << ", " << pos.y << ", " << pos.z << ")" << std::endl;
+        // std::cout << "  From center: (" << spawnCenter.x << ", " << spawnCenter.y << ", " << spawnCenter.z << ")" << std::endl;
+        // std::cout << "  Angle: " << (angle * 180.0f / 3.14159f) << "°, Distance: " << distance << " units" << std::endl;
+        // std::cout << "  Spawn radius: " << spawnRadius << " units" << std::endl;
+        // std::cout << "  Distance from origin: " << sqrt(pos.x * pos.x + pos.z * pos.z) << " units" << std::endl;
+        // std::cout << "================================" << std::endl;
         
         return pos;
     }
@@ -1577,7 +1605,7 @@ Vec3 MonsterSpawner::getRandomSpawnPosition() const {
     // Pick random spawn point
     int index = rand() % spawnPoints.size();
     Vec3 pos = spawnPoints[index];
-    std::cout << "Using predefined spawn point " << index << ": (" << pos.x << ", " << pos.y << ", " << pos.z << ")" << std::endl;
+    // std::cout << "Using predefined spawn point " << index << ": (" << pos.x << ", " << pos.y << ", " << pos.z << ")" << std::endl;
     return pos;
 }
 
@@ -1609,8 +1637,8 @@ void MonsterSpawner::startNewWave() {
     waveStartTime = 0.0f;
     monstersSpawnedInWave = 0;
     
-    // Calculate monsters for this wave based on difficulty
-    monstersInCurrentWave = static_cast<int>(3 + currentWave * 2 * difficultyLevel);
+    // TESTING: Spawn 3 monsters per wave for health bar positioning test
+    monstersInCurrentWave = 3;
     
     // Adjust spawn interval based on difficulty
     spawnInterval = std::max(0.5f, 3.0f - (difficultyLevel - 1.0f) * 0.5f);
@@ -1626,10 +1654,10 @@ void MonsterSpawner::endCurrentWave() {
     waveInProgress = false;
     lastWaveEndTime = 0.0f;
     
-    std::cout << "=== WAVE " << currentWave << " ENDED ===" << std::endl;
-    std::cout << "Monsters spawned: " << monstersSpawnedInWave << "/" << monstersInCurrentWave << std::endl;
-    std::cout << "Next wave in: " << timeBetweenWaves << " seconds" << std::endl;
-    std::cout << "========================" << std::endl;
+    // std::cout << "=== WAVE " << currentWave << " ENDED ===" << std::endl;
+    // std::cout << "Monsters spawned: " << monstersSpawnedInWave << "/" << monstersInCurrentWave << std::endl;
+    // std::cout << "Next wave in: " << timeBetweenWaves << " seconds" << std::endl;
+    // std::cout << "========================" << std::endl;
 }
 
 float MonsterSpawner::getWaveProgress() const {
@@ -1657,10 +1685,10 @@ void MonsterSpawner::increaseDifficulty(float amount) {
     // Adjust max monsters based on difficulty
     maxMonsters = static_cast<int>(3 + difficultyLevel * 2);
     
-    std::cout << "=== DIFFICULTY INCREASED ===" << std::endl;
-    std::cout << "New difficulty level: " << difficultyLevel << std::endl;
-    std::cout << "Max monsters: " << maxMonsters << std::endl;
-    std::cout << "===========================" << std::endl;
+    // std::cout << "=== DIFFICULTY INCREASED ===" << std::endl;
+    // std::cout << "New difficulty level: " << difficultyLevel << std::endl;
+    // std::cout << "Max monsters: " << maxMonsters << std::endl;
+    // std::cout << "===========================" << std::endl;
 }
 
 bool MonsterSpawner::shouldStartNewWave() const {
@@ -1733,7 +1761,7 @@ void Monster::updateTimers(float deltaTime) {
         stunTimer -= deltaTime;
         if (stunTimer <= 0.0f) {
             stunTimer = 0.0f;
-            std::cout << "Monster " << getName() << " recovered from stun" << std::endl;
+            // std::cout << "Monster " << getName() << " recovered from stun" << std::endl;
         }
     }
     
@@ -1816,7 +1844,7 @@ void Monster::retreat(float deltaTime) {
         Vec3 newPos = currentPos + direction * moveDistance;
         setPosition(newPos);
         
-        std::cout << "Monster " << getName() << " retreating from player" << std::endl;
+        // std::cout << "Monster " << getName() << " retreating from player" << std::endl;
     }
     
     // Stop retreating after some time or if health improves
@@ -1830,14 +1858,14 @@ void Monster::becomeAlert() {
     if (state != MonsterState::Alert) {
         setState(MonsterState::Alert);
         alertTimer = 0.0f;
-        std::cout << "Monster " << getName() << " became alert!" << std::endl;
+        // std::cout << "Monster " << getName() << " became alert!" << std::endl;
     }
 }
 
 void Monster::becomeStunned(float duration) {
     stunTimer = duration;
     setState(MonsterState::Stunned);
-    std::cout << "Monster " << getName() << " stunned for " << duration << " seconds" << std::endl;
+    // std::cout << "Monster " << getName() << " stunned for " << duration << " seconds" << std::endl;
 }
 
 bool Monster::hasPlayerInSight() const {
@@ -1894,7 +1922,7 @@ void Monster::updatePathfinding(float deltaTime) {
             stuckTimer += deltaTime;
             if (stuckTimer > 2.0f) { // Stuck for 2 seconds
                 isStuck = true;
-                std::cout << "Monster " << getName() << " is stuck!" << std::endl;
+                // std::cout << "Monster " << getName() << " is stuck!" << std::endl;
             }
         } else {
             stuckTimer = 0.0f;
@@ -1909,10 +1937,18 @@ Vec3 Monster::findPathToTarget(const Vec3& target) {
     Vec3 currentPos = getPosition();
     Vec3 direction = target - currentPos;
     
+    // CRITICAL FIX: Normalize the direction vector to prevent teleporting!
+    float distance = sqrt(direction.x * direction.x + direction.y * direction.y + direction.z * direction.z);
+    if (distance > 0.1f) {
+        direction.x /= distance;
+        direction.y /= distance;
+        direction.z /= distance;
+    }
+    
     // If stuck, try to get unstuck
     if (isStuck) {
         direction = getRandomDirection();
-        std::cout << "Monster " << getName() << " using random direction to get unstuck" << std::endl;
+        // std::cout << "Monster " << getName() << " using random direction to get unstuck" << std::endl;
     }
     
     // Apply obstacle avoidance
@@ -2106,7 +2142,7 @@ void Monster::alertNearbyMonsters() {
         }
     }
     
-    std::cout << "Monster " << getName() << " alerted " << nearbyMonsters.size() << " nearby monsters!" << std::endl;
+    // std::cout << "Monster " << getName() << " alerted " << nearbyMonsters.size() << " nearby monsters!" << std::endl;
 }
 
 bool Monster::isInGroup() const {
@@ -2116,14 +2152,14 @@ bool Monster::isInGroup() const {
 void Monster::joinGroup() {
     if (!inGroup) {
         inGroup = true;
-        std::cout << "Monster " << getName() << " joined a group" << std::endl;
+        // std::cout << "Monster " << getName() << " joined a group" << std::endl;
     }
 }
 
 void Monster::leaveGroup() {
     if (inGroup) {
         inGroup = false;
-        std::cout << "Monster " << getName() << " left the group" << std::endl;
+        // std::cout << "Monster " << getName() << " left the group" << std::endl;
     }
 }
 
@@ -2131,7 +2167,7 @@ void Monster::leaveGroup() {
 void Monster::flashStateChange() {
     isStateFlashing = true;
     stateChangeFlashTimer = 0.3f; // Flash for 0.3 seconds
-    std::cout << "Monster " << getName() << " flashing state change for " << stateChangeFlashTimer << " seconds" << std::endl;
+    // std::cout << "Monster " << getName() << " flashing state change for " << stateChangeFlashTimer << " seconds" << std::endl;
 }
 
 void Monster::updateStateVisualEffects(float deltaTime) {
@@ -2139,7 +2175,7 @@ void Monster::updateStateVisualEffects(float deltaTime) {
         stateChangeFlashTimer -= deltaTime;
         if (stateChangeFlashTimer <= 0.0f) {
             isStateFlashing = false;
-            std::cout << "Monster " << getName() << " state change flash ended" << std::endl;
+            // std::cout << "Monster " << getName() << " state change flash ended" << std::endl;
         }
     }
 }
@@ -2179,10 +2215,10 @@ void Monster::setPulsing(bool pulsing, float speed) {
 void Monster::dropLoot() {
     if (hasDroppedLoot) return;
     
-    std::cout << "=== MONSTER LOOT DROP ===" << std::endl;
-    std::cout << "Monster: " << getName() << std::endl;
-    std::cout << "Experience reward: " << experienceReward << " XP" << std::endl;
-    std::cout << "Score reward: " << scoreReward << " points" << std::endl;
+    // std::cout << "=== MONSTER LOOT DROP ===" << std::endl;
+    // std::cout << "Monster: " << getName() << std::endl;
+    // std::cout << "Experience reward: " << experienceReward << " XP" << std::endl;
+    // std::cout << "Score reward: " << scoreReward << " points" << std::endl;
     
     // In a real game, you would:
     // 1. Create loot objects at the monster's position
@@ -2191,8 +2227,8 @@ void Monster::dropLoot() {
     // 4. Possibly drop items, weapons, or other rewards
     
     // For now, just log the rewards
-    std::cout << "Loot dropped at position: (" << getPosition().x << ", " << getPosition().y << ", " << getPosition().z << ")" << std::endl;
-    std::cout << "=========================" << std::endl;
+    // std::cout << "Loot dropped at position: (" << getPosition().x << ", " << getPosition().y << ", " << getPosition().z << ")" << std::endl;
+    // std::cout << "=========================" << std::endl;
 }
 
 int Monster::getExperienceReward() const {
@@ -2213,11 +2249,11 @@ void Monster::startDeathAnimation() {
     // Store original scale
     originalScale = getScale();
     
-    std::cout << "=== DEATH ANIMATION STARTED ===" << std::endl;
-    std::cout << "Monster: " << getName() << std::endl;
-    std::cout << "Animation duration: " << deathAnimationDuration << " seconds" << std::endl;
-    std::cout << "Original scale: (" << originalScale.x << ", " << originalScale.y << ", " << originalScale.z << ")" << std::endl;
-    std::cout << "==============================" << std::endl;
+    // std::cout << "=== DEATH ANIMATION STARTED ===" << std::endl;
+    // std::cout << "Monster: " << getName() << std::endl;
+    // std::cout << "Animation duration: " << deathAnimationDuration << " seconds" << std::endl;
+    // std::cout << "Original scale: (" << originalScale.x << ", " << originalScale.y << ", " << originalScale.z << ")" << std::endl;
+    // std::cout << "==============================" << std::endl;
 }
 
 void Monster::updateDeathAnimation(float deltaTime) {
@@ -2234,9 +2270,9 @@ void Monster::updateDeathAnimation(float deltaTime) {
         deathAnimationTimer = deathAnimationDuration;
         progress = 1.0f;
         
-        std::cout << "=== DEATH ANIMATION COMPLETED ===" << std::endl;
-        std::cout << "Monster: " << getName() << std::endl;
-        std::cout << "================================" << std::endl;
+        // std::cout << "=== DEATH ANIMATION COMPLETED ===" << std::endl;
+        // std::cout << "Monster: " << getName() << std::endl;
+        // std::cout << "================================" << std::endl;
     }
     
     // Create shrinking effect (monster shrinks and fades)
@@ -2255,8 +2291,8 @@ void Monster::updateDeathAnimation(float deltaTime) {
     static float debugTimer = 0.0f;
     debugTimer += deltaTime;
     if (debugTimer > 0.5f) {
-        std::cout << "Death animation progress: " << (progress * 100.0f) << "%" << std::endl;
-        std::cout << "Current scale: (" << deathScale.x << ", " << deathScale.y << ", " << deathScale.z << ")" << std::endl;
+        // std::cout << "Death animation progress: " << (progress * 100.0f) << "%" << std::endl;
+        // std::cout << "Current scale: (" << deathScale.x << ", " << deathScale.y << ", " << deathScale.z << ")" << std::endl;
         debugTimer = 0.0f;
     }
 }

@@ -56,7 +56,6 @@ void Ground::generateInitialChunks() {
         }
     }
     
-    std::cout << "Generated " << chunks.size() << " chunks for ground '" << getName() << "'" << std::endl;
 }
 
 void Ground::updateChunkVisibility(const Vec3& playerPosition) {
@@ -73,12 +72,10 @@ void Ground::setupMesh() {
     // Ground no longer needs its own mesh - it uses chunks
     // Generate initial chunks here when the Ground is properly initialized
     generateInitialChunks();
-    std::cout << "Ground '" << getName() << "' uses chunk-based rendering" << std::endl;
 }
 
 void Ground::render(const Renderer& renderer, const Camera& camera) {
     if (!getActive() || !isValid()) {
-        std::cout << "Ground not active or not valid" << std::endl;
         return;
     }
     
@@ -166,8 +163,6 @@ void Ground::generateChunkAt(const Vec2& chunkCoords) {
     
     chunks.push_back(std::move(chunk));
     
-    std::cout << "Generated new chunk: " << chunkName << " at world position (" 
-              << chunkWorldPos.x + groundPos.x << ", " << groundPos.y << ", " << chunkWorldPos.z + groundPos.z << ")" << std::endl;
 }
 
 void Ground::cleanupDistantChunks(const Vec3& playerPosition) {
@@ -177,7 +172,6 @@ void Ground::cleanupDistantChunks(const Vec3& playerPosition) {
     
     while (it != chunks.end()) {
         if (shouldRemoveChunk(it->get(), playerPosition)) {
-            std::cout << "Removing distant chunk: " << (*it)->getName() << std::endl;
             it = chunks.erase(it);
             removedCount++;
         } else {
@@ -186,7 +180,6 @@ void Ground::cleanupDistantChunks(const Vec3& playerPosition) {
     }
     
     if (removedCount > 0) {
-        std::cout << "Cleaned up " << removedCount << " distant chunks. Total chunks: " << chunks.size() << std::endl;
     }
 }
 
@@ -250,8 +243,6 @@ void Ground::updateSlidingChunkWindow(const Vec3& playerPosition) {
             chunks.pop_back();
         }
         
-        std::cout << "Repositioned terrain window to player chunk coordinates (" 
-                  << playerChunkCoords.x << ", " << playerChunkCoords.y << ")" << std::endl;
         
             // Notify minimap that chunks have changed
         if (minimapReference) {
@@ -289,7 +280,6 @@ void Ground::updateEntityVisibility(const std::vector<std::unique_ptr<GameObject
         }
     }
     
-    std::cout << "Ground visibility system: " << visibleEntities.size() << " entities are currently visible" << std::endl;
 }
 
 void Ground::repositionChunkToCoordinates(Chunk* chunk, const Vec2& newCoords) {

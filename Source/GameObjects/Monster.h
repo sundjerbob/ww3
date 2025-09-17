@@ -11,7 +11,8 @@
 #include "../Engine/Math/Math.h"
 #include "../Engine/Rendering/Material.h"
 #include "../Engine/Utils/OBJLoader.h"
-#include "HealthBar.h"
+// #include "HealthBar.h"  // REMOVED: Using new texture-based health bar system
+#include "../Engine/Rendering/TextureHealthBar.h"
 #include <memory>
 #include <vector>
 
@@ -140,11 +141,9 @@ private:
     // References
     GameObject* playerTarget;
     
-    // Health bar (simplified - no separate object)
+    // Health bar system - NEW: Using texture-based system
+    std::unique_ptr<TextureHealthBar> textureHealthBar;
     bool showHealthBar;
-    float healthBarWidth;
-    float healthBarHeight;
-    float healthBarOffsetY;
     
     // Material system
     MaterialLibrary monsterMaterials;
@@ -231,11 +230,11 @@ public:
     float getHealthPercentage() const { return health / maxHealth; }
     void setHealth(float newHealth);
     
-    // Health bar management
+    // Health bar management - NEW: Using texture-based system
     void setShowHealthBar(bool show) { showHealthBar = show; }
     bool getShowHealthBar() const { return showHealthBar; }
     void updateHealthBar();
-    void renderHealthBar(const Renderer& renderer, const Camera& camera);
+    void renderHealthBar(const Camera& camera);
     
     // Movement and positioning
     void setTargetPosition(const Vec3& position);

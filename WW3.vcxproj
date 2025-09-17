@@ -163,7 +163,7 @@
     <ClCompile Include="Source\GameObjects\AmmoUI.cpp" />
     <ClCompile Include="Source\GameObjects\Monster.cpp" />
     <ClCompile Include="Source\GameObjects\Player.cpp" />
-    <ClCompile Include="Source\GameObjects\HealthBar.cpp" />
+    <ClCompile Include="Source\Engine\Rendering\TextureHealthBar.cpp" />
     <ClCompile Include="Source\Engine\Rendering\SimpleTextRenderer.cpp" />
     <ClCompile Include="Source\Engine\Rendering\Light.cpp" />
     <ClCompile Include="Source\Engine\Rendering\LightManager.cpp" />

@@ -81,8 +81,6 @@ bool Mesh::createMesh(const std::vector<float>& vertexData, const std::vector<un
 }
 
 bool Mesh::createMeshWithNormals(const std::vector<float>& vertexData, const std::vector<unsigned int>& indexData) {
-    std::cout << "Mesh: Creating mesh with normals - Vertices: " << vertexData.size() 
-              << ", Indices: " << indexData.size() << std::endl;
     
     // Clean up any existing mesh
     cleanup();
@@ -96,7 +94,6 @@ bool Mesh::createMeshWithNormals(const std::vector<float>& vertexData, const std
     glGenBuffers(1, &VBO);
     glGenBuffers(1, &EBO);
     
-    std::cout << "Mesh: Generated OpenGL objects - VAO: " << VAO << ", VBO: " << VBO << ", EBO: " << EBO << std::endl;
     
     glBindVertexArray(VAO);
     
@@ -121,7 +118,6 @@ bool Mesh::createMeshWithNormals(const std::vector<float>& vertexData, const std
     glBindVertexArray(0);
     
     isInitialized = true;
-    std::cout << "Mesh: Mesh created successfully with normals" << std::endl;
     return true;
 }
 

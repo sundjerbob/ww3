@@ -22,7 +22,6 @@
 #include "../../GameObjects/Weapon.h"
 #include "../../GameObjects/AmmoUI.h"
 #include "../../GameObjects/Monster.h"
-#include "../../GameObjects/HealthBar.h"
 #include "../Input/Input.h"
 #include <GL/glew.h>
 #include <iostream>
@@ -199,9 +198,35 @@ void Game::update(float deltaTime) {
             ammoUI->update(deltaTime);
         }
         
+        
         // Update camera recoil recovery
         if (camera) {
             camera->updateRecoil(deltaTime);
+        }
+        
+        // Debug timer for periodic yaw output
+        static float yawDebugTimer = 0.0f;
+        yawDebugTimer += deltaTime;
+        
+        if (yawDebugTimer >= 1.0f) {
+            // Print player yaw for debugging bullet trajectory issues
+            if (camera) {
+                Vec3 cameraRotation = camera->getRotation();
+                std::cout << "=== PLAYER DEBUG INFO ===" << std::endl;
+                std::cout << "Player Yaw: " << cameraRotation.y << " degrees" << std::endl;
+                std::cout << "Player Pitch: " << cameraRotation.x << " degrees" << std::endl;
+                std::cout << "Player Position: (" << camera->getPosition().x << ", " 
+                          << camera->getPosition().y << ", " << camera->getPosition().z << ")" << std::endl;
+                
+                // Also print barrel tip position for comparison
+                Vec3 barrelTip = weapon->getBarrelTipPosition();
+                std::cout << "Barrel Tip: (" << barrelTip.x << ", " 
+                          << barrelTip.y << ", " << barrelTip.z << ")" << std::endl;
+                std::cout << "=========================" << std::endl;
+            }
+            
+            // Reset timer
+            yawDebugTimer = 0.0f;
         }
         
         // Update projectile manager and check for collisions
@@ -323,6 +348,25 @@ void Game::update(float deltaTime) {
     // Update monster spawner
     if (monsterSpawner) {
         monsterSpawner->update(deltaTime);
+        
+        // Debug monster spawner status
+        static int spawnerDebugCount = 0;
+        spawnerDebugCount++;
+        if (spawnerDebugCount % 300 == 0) { // Print every 5 seconds
+            std::cout << "=== MONSTER SPAWNER DEBUG ===" << std::endl;
+            std::cout << "MonsterSpawner exists: YES" << std::endl;
+            const auto& activeMonsters = monsterSpawner->getActiveMonsters();
+            std::cout << "Active monsters count: " << activeMonsters.size() << std::endl;
+            std::cout << "=============================" << std::endl;
+        }
+    } else {
+        static int spawnerDebugCount = 0;
+        spawnerDebugCount++;
+        if (spawnerDebugCount % 300 == 0) { // Print every 5 seconds
+            std::cout << "=== MONSTER SPAWNER DEBUG ===" << std::endl;
+            std::cout << "MonsterSpawner exists: NO!" << std::endl;
+            std::cout << "=============================" << std::endl;
+        }
     }
 }
 
@@ -420,27 +464,54 @@ void Game::render() {
             static float renderDebugTimer = 0.0f;
             renderDebugTimer += 0.016f; // Approximate frame time
             if (renderDebugTimer > 3.0f) {
-                std::cout << "=== MONSTER RENDERING ===" << std::endl;
-                std::cout << "MonsterRenderer available: YES" << std::endl;
-                std::cout << "Active monsters count: " << activeMonsters.size() << std::endl;
+                // std::cout << "=== MONSTER RENDERING ===" << std::endl;
+                // std::cout << "MonsterRenderer available: YES" << std::endl;
+                // std::cout << "Active monsters count: " << activeMonsters.size() << std::endl;
                 renderDebugTimer = 0.0f;
             }
             
+            // First, render all monsters
             for (const auto& monster : activeMonsters) {
                 if (monster && monster->isAlive() && monster->getActive()) {
                     monster->render(*monsterRenderer, *camera);
                 }
             }
         } else {
-            std::cout << "=== MONSTER RENDERING ===" << std::endl;
-            std::cout << "MonsterRenderer NOT AVAILABLE!" << std::endl;
-            std::cout << "========================" << std::endl;
+            // std::cout << "=== MONSTER RENDERING ===" << std::endl;
+            // std::cout << "MonsterRenderer NOT AVAILABLE!" << std::endl;
+            // std::cout << "========================" << std::endl;
         }
+        
     }
     
     // Render projectiles
     if (projectileManager) {
         projectileManager->render(*defaultRenderer, *camera);
+    }
+    
+    // Render health bars - AFTER EVERYTHING ELSE for maximum visibility
+    if (monsterSpawner) {
+        const auto& activeMonsters = monsterSpawner->getActiveMonsters();
+        static int healthBarDebugCount = 0;
+        healthBarDebugCount++;
+        std::cout << "=== HEALTH BAR RENDERING DEBUG ===" << std::endl;
+        if (healthBarDebugCount % 300 == 0) { // Print every 5 seconds
+            std::cout << "Active monsters count: " << activeMonsters.size() << std::endl;
+            for (size_t i = 0; i < activeMonsters.size(); ++i) {
+                if (activeMonsters[i]) {
+                    std::cout << "Monster " << i << ": alive=" << activeMonsters[i]->isAlive() 
+                              << ", active=" << activeMonsters[i]->getActive() << std::endl;
+                }
+            }
+            std::cout << "================================" << std::endl;
+        }
+        
+        for (const auto& monster : activeMonsters) {
+            if (monster && monster->getActive() && monster->isAlive()) {
+                // Only render health bars for alive monsters
+                monster->renderHealthBar(*camera);
+            }
+        }
     }
     
     // Render AmmoUI (UI overlay)
@@ -460,6 +531,7 @@ void Game::render() {
             }
         }
     }
+    
     
     defaultRenderer->endFrame(window);
 }
@@ -686,6 +758,7 @@ void Game::setupSceneObjects() {
     ammoUI->setReloadColor(Vec3(1.0f, 1.0f, 0.0f));     // Yellow for reloading
     ammoUI->setLowAmmoThreshold(0.25f);                  // 25% threshold
     
+    
     // Connect AmmoUI to weapon
     if (weapon) {
         ammoUI->setWeapon(weapon.get());
@@ -696,8 +769,21 @@ void Game::setupSceneObjects() {
     } else {
     }
     
+    
     // Initialize monster spawner
     monsterSpawner = std::make_unique<MonsterSpawner>(scene.get(), weapon.get());
+    
+    
+    // TESTING: Directly spawn 3 monsters for health bar testing
+    if (monsterSpawner) {
+        std::cout << "=== DIRECT SPAWN 3 MONSTERS FOR TESTING ===" << std::endl;
+        monsterSpawner->spawnMonsterAt(Vec3(8.0f, 0.0f, 8.0f), MonsterType::Xenomorph);   // Monster 1
+        monsterSpawner->spawnMonsterAt(Vec3(12.0f, 0.0f, 10.0f), MonsterType::Xenomorph); // Monster 2  
+        monsterSpawner->spawnMonsterAt(Vec3(10.0f, 0.0f, 14.0f), MonsterType::Xenomorph); // Monster 3
+        std::cout << "Direct spawned 3 monsters for health bar testing" << std::endl;
+        std::cout << "Active monsters count: " << monsterSpawner->getActiveMonsters().size() << std::endl;
+        std::cout << "===============================================" << std::endl;
+    }
     
     // TEMPORARILY DISABLED: Adding weapon to scene has ownership issues
     // std::cout << "=== ADDING WEAPON TO SCENE FOR TESTING ===" << std::endl;

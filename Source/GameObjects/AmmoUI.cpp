@@ -53,12 +53,10 @@ bool AmmoUI::initialize() {
         return false;
     }
     
-    std::cout << "Initializing AmmoUI..." << std::endl;
     
     // Initialize text strings
     updateTextStrings();
     
-    std::cout << "AmmoUI initialized successfully" << std::endl;
     return true;
 }
 
@@ -85,12 +83,6 @@ void AmmoUI::render(const Renderer& renderer, const Camera& camera) {
     const SimpleTextRenderer* textRenderer = dynamic_cast<const SimpleTextRenderer*>(&renderer);
     if (!textRenderer) {
         // Fallback to console output if text renderer not available
-        std::cout << "\rAMMO: " << currentAmmo << "/" << maxAmmo << " | RESERVE: " << reserveAmmo << "/" << maxReserveAmmo;
-        if (isReloading) {
-            std::cout << " | RELOADING: " << (reloadProgress * 100.0f) << "%";
-        }
-        std::cout << "     ";
-        std::cout.flush();
         return;
     }
     
@@ -124,7 +116,6 @@ void AmmoUI::render(const Renderer& renderer, const Camera& camera) {
 void AmmoUI::cleanup() {
     if (!isInitialized) return;
     
-    std::cout << "Cleaning up AmmoUI..." << std::endl;
     
     weapon = nullptr;
     shootingComponent = nullptr;

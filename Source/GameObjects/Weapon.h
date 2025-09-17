@@ -48,8 +48,12 @@ private:
     std::string weaponModelPath;
     Vec3 weaponColor;
     float weaponScale;
-    Vec3 screenPosition;  // Fixed position on screen (NDC coordinates)
-    Vec3 weaponOffset;    // Offset from screen position for fine-tuning
+    Vec3 screenPosition;  // Legacy screen position (kept for compatibility)
+    Vec3 weaponOffset;    // Legacy offset (kept for compatibility)
+    
+    // 3D World-space positioning
+    Vec3 worldSpaceOffset;  // 3D offset from camera position in world space
+    Vec3 barrelTipOffset;   // Offset from weapon origin to barrel tip
     
     // Weapon state
     bool isLoaded;
@@ -128,8 +132,16 @@ public:
     void setWeaponOffset(const Vec3& offset) { weaponOffset = offset; }
     Vec3 getWeaponOffset() const { return weaponOffset; }
     
-    // World position calculation
+    // World position calculation (legacy method)
     Vec3 getWorldPosition() const;
+    
+    // 3D World-space positioning methods
+    void updateWorldPosition();           // Update weapon position based on camera
+    Vec3 getBarrelTipPosition() const;    // Get precise barrel tip world position
+    void setWorldSpaceOffset(const Vec3& offset) { worldSpaceOffset = offset; }
+    Vec3 getWorldSpaceOffset() const { return worldSpaceOffset; }
+    void setBarrelTipOffset(const Vec3& offset) { barrelTipOffset = offset; }
+    Vec3 getBarrelTipOffset() const { return barrelTipOffset; }
     
     void setAimSensitivity(float sensitivity) { aimSensitivity = sensitivity; }
     float getAimSensitivity() const { return aimSensitivity; }

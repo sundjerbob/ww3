@@ -25,7 +25,6 @@ Water::~Water() {
 bool Water::initialize() {
     if (isInitialized) return true;
     
-    std::cout << "Initializing Water '" << name << "'..." << std::endl;
     
     // Setup the water mesh
     setupMesh();
@@ -38,13 +37,10 @@ bool Water::initialize() {
         waterRenderer->setDistortionScale(distortionScale);
         waterRenderer->setShineDamper(shineDamper);
         waterRenderer->setReflectivity(reflectivity);
-        std::cout << "Water renderer configured for '" << name << "'" << std::endl;
     } else {
-        std::cerr << "Warning: No water renderer available for '" << name << "'" << std::endl;
     }
     
     isInitialized = true;
-    std::cout << "Water '" << name << "' initialized successfully" << std::endl;
     return true;
 }
 
@@ -149,12 +145,10 @@ void Water::setupMesh() {
     }
     
     if (!mesh->createMeshWithNormalsAndTexCoords(vertexData, indices)) {
-        std::cerr << "Failed to create water mesh" << std::endl;
         return;
     }
     
-    std::cout << "Water mesh created with " << vertices.size() << " vertices and " 
-              << indices.size() / 3 << " triangles" << std::endl;
+    // std::cout << "Water mesh created with " << indices.size() / 3 << " triangles" << std::endl;
 }
 
 Mat4 Water::getWaterModelMatrix() const {

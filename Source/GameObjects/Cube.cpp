@@ -74,9 +74,7 @@ void Cube::setupMesh() {
     // Create mesh
     mesh = std::make_unique<Mesh>();
     if (!mesh->createMesh(vertices, indices)) {
-        std::cerr << "Failed to create cube mesh for '" << getName() << "'" << std::endl;
     } else {
-        std::cout << "Created cube mesh for '" << getName() << "'" << std::endl;
     }
 }
 

@@ -13,7 +13,8 @@
 namespace Engine {
 
 // Forward declarations
-class HealthBar;
+// class HealthBar;  // REMOVED: Using new texture-based health bar system
+class TextureHealthBar;
 
 /**
  * Player - Main player character with health system
@@ -26,8 +27,8 @@ private:
     float armor;
     float maxArmor;
     
-    // Health bar
-    std::unique_ptr<HealthBar> healthBar;
+    // Health bar - NEW: Using texture-based system
+    std::unique_ptr<TextureHealthBar> textureHealthBar;
     bool showHealthBar;
     
     // Damage effects
@@ -71,10 +72,10 @@ public:
     float getArmorPercentage() const { return armor / maxArmor; }
     void setArmor(float newArmor);
     
-    // Health bar management
+    // Health bar management - NEW: Using texture-based system
     void setShowHealthBar(bool show) { showHealthBar = show; }
     bool getShowHealthBar() const { return showHealthBar; }
-    HealthBar* getHealthBar() const { return healthBar.get(); }
+    TextureHealthBar* getHealthBar() const { return textureHealthBar.get(); }
     void createHealthBar();
     void updateHealthBar();
     

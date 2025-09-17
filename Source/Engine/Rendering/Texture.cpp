@@ -46,7 +46,6 @@ bool Texture::loadFromFile(const std::string& path) {
     // In a full implementation, this would load actual image files
     // For weapon materials, we'll create a basic metallic texture pattern
     
-    std::cout << "Loading texture from: " << path << std::endl;
     
     // Create a simple 64x64 metallic texture pattern
     width = 64;
@@ -97,7 +96,6 @@ bool Texture::loadFromMemory(const unsigned char* data, int w, int h, int ch) {
     
     isInitialized = true;
     
-    std::cout << "Texture loaded successfully: " << width << "x" << height << " (" << channels << " channels)" << std::endl;
     return true;
 }
 
@@ -140,7 +138,6 @@ void Texture::setWrapping(GLenum sWrap, GLenum tWrap) {
 bool Texture::initializeTexture() {
     glGenTextures(1, &textureID);
     if (textureID == 0) {
-        std::cerr << "Failed to generate texture ID" << std::endl;
         return false;
     }
     

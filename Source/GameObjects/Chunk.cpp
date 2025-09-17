@@ -90,10 +90,7 @@ void Chunk::setupMesh() {
     // Create mesh
     mesh = std::make_unique<Mesh>();
     if (!mesh->createMesh(vertices, indices)) {
-        std::cerr << "Failed to create chunk mesh for '" << getName() << "'" << std::endl;
     } else {
-        std::cout << "Created chunk mesh for '" << getName() << "' at position (" 
-                  << chunkPosition.x << ", " << chunkPosition.y << ")" << std::endl;
     }
 }
 

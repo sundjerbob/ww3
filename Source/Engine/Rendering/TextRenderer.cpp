@@ -39,7 +39,6 @@ bool TextRenderer::initialize(int width, int height) {
     
     // Load text shader
     if (!loadTextShader()) {
-        std::cerr << "Failed to load text shader" << std::endl;
         return false;
     }
     
@@ -50,7 +49,6 @@ bool TextRenderer::initialize(int width, int height) {
     glGenTextures(1, &atlasTexture);
     
     isInitialized = true;
-    std::cout << "TextRenderer initialized successfully" << std::endl;
     return true;
 }
 
@@ -73,7 +71,6 @@ void TextRenderer::cleanup() {
     fontLoaded = false;
     isInitialized = false;
     
-    std::cout << "TextRenderer cleanup complete" << std::endl;
 }
 
 bool TextRenderer::loadTextShader() {
@@ -81,7 +78,6 @@ bool TextRenderer::loadTextShader() {
                                           "Resources/Shaders/text_fragment.glsl");
     
     if (!textShader || !textShader->isValid()) {
-        std::cerr << "Failed to create text shader" << std::endl;
         return false;
     }
     
@@ -93,7 +89,6 @@ bool TextRenderer::loadFont(const std::string& fontPath, float fontSize) {
     std::ifstream file(fontPath, std::ios::binary | std::ios::ate);
     
     if (!file.is_open()) {
-        std::cout << "Font file not found, using default embedded font data" << std::endl;
         // Create a simple default font (this would normally be embedded font data)
         return loadDefaultFont(fontSize);
     }
@@ -105,7 +100,6 @@ bool TextRenderer::loadFont(const std::string& fontPath, float fontSize) {
     fontData = new unsigned char[fontDataSize];
     
     if (!file.read(reinterpret_cast<char*>(fontData), size)) {
-        std::cerr << "Failed to read font file: " << fontPath << std::endl;
         delete[] fontData;
         fontData = nullptr;
         return false;
@@ -121,25 +115,21 @@ bool TextRenderer::loadFontFromMemory(const unsigned char* data, int dataSize, f
     
     // Initialize font
     if (!stbtt_InitFont(&fontInfo, data, stbtt_GetFontOffsetForIndex(data, 0))) {
-        std::cerr << "Failed to initialize font" << std::endl;
         return false;
     }
     
     // Generate character atlas
     if (!generateAtlas(fontSize)) {
-        std::cerr << "Failed to generate font atlas" << std::endl;
         return false;
     }
     
     fontLoaded = true;
-    std::cout << "Font loaded successfully with atlas size: " << atlasWidth << "x" << atlasHeight << std::endl;
     return true;
 }
 
 bool TextRenderer::loadDefaultFont(float fontSize) {
     // For now, we'll create a simple bitmap font
     // In a real implementation, you'd embed a default font
-    std::cout << "Loading default font (simplified implementation)" << std::endl;
     
     // Create a simple white texture for now
     atlasWidth = 256;

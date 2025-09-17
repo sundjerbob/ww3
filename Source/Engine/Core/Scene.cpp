@@ -21,16 +21,13 @@ Scene::~Scene() {
 
 bool Scene::initialize() {
     if (isInitialized) {
-        std::cout << "Scene '" << sceneName << "' already initialized" << std::endl;
         return true;
     }
     
-    std::cout << "Initializing Scene '" << sceneName << "'..." << std::endl;
     
     // Initialize all game objects
     for (auto& object : gameObjects) {
         if (!object->initialize()) {
-            std::cerr << "Failed to initialize GameObject '" << object->getName() << "'" << std::endl;
             return false;
         }
     }
@@ -38,8 +35,6 @@ bool Scene::initialize() {
     updateObjectCounts();
     isInitialized = true;
     
-    std::cout << "Scene '" << sceneName << "' initialized successfully with " 
-              << totalObjects << " objects" << std::endl;
     return true;
 }
 
@@ -55,7 +50,6 @@ void Scene::update(float deltaTime) {
                 try {
                     object->update(deltaTime);
                 } catch (const std::exception& e) {
-                    std::cout << "Error updating monster " << object->getName() << ": " << e.what() << std::endl;
                 }
             } else {
                 // Update non-monster objects normally
@@ -122,7 +116,6 @@ void Scene::render(const Camera& camera, const Renderer& renderer) {
 void Scene::cleanup() {
     if (!isInitialized) return;
     
-    std::cout << "Cleaning up Scene '" << sceneName << "'..." << std::endl;
     
     // Clean up all game objects
     for (auto& object : gameObjects) {
@@ -137,12 +130,10 @@ void Scene::cleanup() {
     renderedObjects = 0;
     
     isInitialized = false;
-    std::cout << "Scene '" << sceneName << "' cleanup complete" << std::endl;
 }
 
 void Scene::addGameObject(std::unique_ptr<GameObject> object) {
     if (!object) {
-        std::cerr << "Attempted to add null GameObject to scene" << std::endl;
         return;
     }
     
@@ -150,7 +141,6 @@ void Scene::addGameObject(std::unique_ptr<GameObject> object) {
     
     // Check if object with this name already exists
     if (objectMap.find(objectName) != objectMap.end()) {
-        std::cerr << "GameObject with name '" << objectName << "' already exists in scene" << std::endl;
         return;
     }
     
@@ -165,7 +155,6 @@ void Scene::addGameObject(std::unique_ptr<GameObject> object) {
     // Initialize if scene is already initialized
     if (isInitialized) {
         if (!objectPtr->initialize()) {
-            std::cerr << "Failed to initialize GameObject '" << objectName << "'" << std::endl;
             // Remove from collections
             gameObjects.pop_back();
             objectMap.erase(objectName);
@@ -174,7 +163,6 @@ void Scene::addGameObject(std::unique_ptr<GameObject> object) {
     }
     
     updateObjectCounts();
-    std::cout << "Added GameObject '" << objectName << "' to scene '" << sceneName << "'" << std::endl;
 }
 
 GameObject* Scene::getGameObject(const std::string& name) {
@@ -212,12 +200,10 @@ void Scene::removeGameObject(GameObject* object) {
         objectMap.erase(objectName);
         
         updateObjectCounts();
-        std::cout << "Removed GameObject '" << objectName << "' from scene '" << sceneName << "'" << std::endl;
     }
 }
 
 void Scene::clear() {
-    std::cout << "Clearing Scene '" << sceneName << "'..." << std::endl;
     
     // Clean up all objects
     for (auto& object : gameObjects) {
@@ -228,7 +214,6 @@ void Scene::clear() {
     objectMap.clear();
     
     updateObjectCounts();
-    std::cout << "Scene '" << sceneName << "' cleared" << std::endl;
 }
 
 void Scene::printSceneInfo() const {
@@ -253,30 +238,7 @@ void Scene::printSceneInfo() const {
         }
     }
     
-    std::cout << "\n=== Scene Information ===" << std::endl;
-    std::cout << "Scene Name: " << sceneName << std::endl;
-    std::cout << "Initialized: " << (isInitialized ? "Yes" : "No") << std::endl;
-    std::cout << "Active: " << (isActive ? "Yes" : "No") << std::endl;
-    std::cout << "Total Objects: " << totalObjects << std::endl;
-    std::cout << "Active Objects: " << activeObjects << std::endl;
-    std::cout << "Renderable Objects: " << currentRenderableObjects << std::endl;
-    std::cout << "Last Rendered Objects: " << renderedObjects << std::endl;
-    
-    if (!gameObjects.empty()) {
-        std::cout << "\nGameObjects:" << std::endl;
-        for (const auto& object : gameObjects) {
-            std::cout << "  - " << object->getName() 
-                      << " (Active: " << (object->getActive() ? "Yes" : "No") << ")";
-            
-            // CRASH PREVENTION: Skip monsters entirely for now
-            if (object->getName().find("Monster_") == 0) {
-                std::cout << " (Valid: Skipped for monster)" << std::endl;
-            } else {
-                std::cout << " (Valid: " << (object->isValid() ? "Yes" : "No") << ")" << std::endl;
-            }
-        }
-    }
-    std::cout << "========================\n" << std::endl;
+    // Scene information removed to eliminate console output
 }
 
 void Scene::updateObjectCounts() {
