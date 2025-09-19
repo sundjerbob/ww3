@@ -124,22 +124,19 @@ void ShootingSystem::stopFiring() {
 void ShootingSystem::fireSingleShot() {
     if (!canFire()) return;
     
-    // Fire logic implementation
+    // Compute and fire along the engineered start->end vector
+    Vec3 firePos = getFirePosition();
+    Vec3 fireDir = getFireDirection();
+    
+    if (projectileManager && currentWeapon) {
+        fireProjectile(firePos, fireDir);
+    }
     
     // Consume ammo
     consumeAmmo();
     
     // Apply recoil
     applyRecoil();
-    
-    // Spawn and fire projectile
-    
-    if (projectileManager && currentWeapon) {
-        Vec3 firePos = getFirePosition();
-        Vec3 fireDir = getFireDirection();
-        fireProjectile(firePos, fireDir);
-    } else {
-    }
 }
 
 void ShootingSystem::fireBurst() {
@@ -331,30 +328,29 @@ void ShootingSystem::fireMonsterHunterProjectile(const Vec3& position, const Vec
 
 Vec3 ShootingSystem::getFireDirection() const {
     if (playerCamera && currentWeapon) {
-        // SIMPLE DIRECTION APPROACH:
-        // Calculate direction from fixed gun position to where camera is looking
-        // This creates natural aiming behavior
-        
+        // ENGINEERED VECTOR APPROACH (matches on-screen debug markers):
+        // Start: camera-relative muzzle offset; End: center along camera forward
         Vec3 cameraPos = playerCamera->getPosition();
         Vec3 cameraForward = playerCamera->getForward();
+        Vec3 cameraRight = playerCamera->getRight();
+        Vec3 cameraUp = playerCamera->getUpVector();
         
-        // Gun position (same as in Weapon::getBarrelTipPosition)
-        Vec3 fixedWorldOffset = Vec3(0.15f, -0.1f, 0.4f);
-        Vec3 gunWorldPos = cameraPos + fixedWorldOffset;
+        // Start (matches red marker): right, down, forward from camera
+        Vec3 startOffset = Vec3(0.2f, -0.1f, 0.8f);
+        Vec3 startWorld = cameraPos + cameraRight * startOffset.x + cameraUp * startOffset.y + cameraForward * startOffset.z;
         
-        // Target point in front of camera (where crosshair points)
-        float targetDistance = 100.0f;  // Far enough to act like infinity
-        Vec3 targetPos = cameraPos + cameraForward * targetDistance;
+        // End (matches green marker): center of screen, forward from camera
+        Vec3 endOffset = Vec3(0.0f, 0.0f, 100.0f); // Far along forward for stable direction
+        Vec3 endWorld = cameraPos + cameraRight * endOffset.x + cameraUp * endOffset.y + cameraForward * endOffset.z;
         
-        // Direction from gun to target
-        Vec3 bulletDirection = normalize(targetPos - gunWorldPos);
+        Vec3 bulletDirection = normalize(endWorld - startWorld);
         
         // Debug output
-        std::cout << "=== SIMPLE DIRECTION CALCULATION ===" << std::endl;
-        std::cout << "Gun position: (" << gunWorldPos.x << ", " << gunWorldPos.y << ", " << gunWorldPos.z << ")" << std::endl;
-        std::cout << "Target position: (" << targetPos.x << ", " << targetPos.y << ", " << targetPos.z << ")" << std::endl;
-        std::cout << "Bullet direction: (" << bulletDirection.x << ", " << bulletDirection.y << ", " << bulletDirection.z << ")" << std::endl;
-        std::cout << "====================================" << std::endl;
+        std::cout << "=== ENGINEERED DIRECTION CALC ===" << std::endl;
+        std::cout << "Start (world): (" << startWorld.x << ", " << startWorld.y << ", " << startWorld.z << ")" << std::endl;
+        std::cout << "End   (world): (" << endWorld.x << ", " << endWorld.y << ", " << endWorld.z << ")" << std::endl;
+        std::cout << "Dir          : (" << bulletDirection.x << ", " << bulletDirection.y << ", " << bulletDirection.z << ")" << std::endl;
+        std::cout << "==================================" << std::endl;
         
         return bulletDirection;
     }
@@ -363,15 +359,20 @@ Vec3 ShootingSystem::getFireDirection() const {
 
 Vec3 ShootingSystem::getFirePosition() const {
     if (currentWeapon && playerCamera) {
-        // NEW 3D APPROACH: Use precise barrel tip position
-        Vec3 barrelTipPos = currentWeapon->getBarrelTipPosition();
+        // ENGINEERED START (matches red marker): camera-relative muzzle offset
+        Vec3 cameraPos = playerCamera->getPosition();
+        Vec3 cameraForward = playerCamera->getForward();
+        Vec3 cameraRight = playerCamera->getRight();
+        Vec3 cameraUp = playerCamera->getUpVector();
+        Vec3 startOffset = Vec3(0.2f, -0.1f, 0.8f);
+        Vec3 startWorld = cameraPos + cameraRight * startOffset.x + cameraUp * startOffset.y + cameraForward * startOffset.z;
         
         // Debug output
-        std::cout << "=== 3D BARREL TIP FIRE POSITION ===" << std::endl;
-        std::cout << "Barrel tip position: (" << barrelTipPos.x << ", " << barrelTipPos.y << ", " << barrelTipPos.z << ")" << std::endl;
-        std::cout << "===================================" << std::endl;
+        std::cout << "=== ENGINEERED FIRE POSITION ===" << std::endl;
+        std::cout << "Start (world): (" << startWorld.x << ", " << startWorld.y << ", " << startWorld.z << ")" << std::endl;
+        std::cout << "================================" << std::endl;
         
-        return barrelTipPos;
+        return startWorld;
     }
     std::cout << "WARNING: No weapon or camera available for fire position!" << std::endl;
     return Vec3(0.0f, 0.0f, 0.0f);
@@ -468,12 +469,17 @@ void WeaponShootingComponent::fireSingleShot() {
 
 void WeaponShootingComponent::fireMonsterHunterShot() {
     if (isEnabled) {
-        // Get fire position and direction from shooting system
+        // DISABLED: Get fire position and direction from shooting system
         Vec3 firePos = shootingSystem.getFirePosition();
         Vec3 fireDir = shootingSystem.getFireDirection();
         
-        // Fire monster hunter projectile
-        shootingSystem.fireMonsterHunterProjectile(firePos, fireDir);
+        std::cout << "=== MONSTER HUNTER SHOT DISABLED ===" << std::endl;
+        std::cout << "Fire position would be: (" << firePos.x << ", " << firePos.y << ", " << firePos.z << ")" << std::endl;
+        std::cout << "Fire direction would be: (" << fireDir.x << ", " << fireDir.y << ", " << fireDir.z << ")" << std::endl;
+        std::cout << "===================================" << std::endl;
+        
+        // DISABLED: Fire monster hunter projectile
+        // shootingSystem.fireMonsterHunterProjectile(firePos, fireDir);
     }
 }
 

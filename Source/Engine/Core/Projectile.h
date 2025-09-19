@@ -168,6 +168,9 @@ public:
     virtual void update(float deltaTime) override;
     virtual void render(const Renderer& renderer, const Camera& camera) override;
     
+    // Override model matrix to provide world space orientation
+    Mat4 getModelMatrix() const override;
+    
     // Projectile control
     void fire(const Vec3& position, const Vec3& direction, GameObject* owner = nullptr);
     void destroy();

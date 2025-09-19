@@ -107,6 +107,9 @@ private:
     void calculateDeltaTime();
     void printControls();
     
+    // Debug methods
+    void renderProjectileStartPositionDebug(const Renderer& renderer, const Camera& camera);
+    
     // Static callback functions
     static void framebufferSizeCallback(GLFWwindow* window, int width, int height);
     static void windowIconifyCallback(GLFWwindow* window, int iconified);

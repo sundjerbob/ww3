@@ -84,7 +84,7 @@ public:
     Vec3 getScale() const { return scale; }
     
     // Transform matrix
-    Mat4 getModelMatrix() const;
+    virtual Mat4 getModelMatrix() const;
     
     // World transform (includes parent transforms)
     Vec3 getWorldPosition() const;

@@ -363,7 +363,7 @@ void Monster::die() {
     // Call death callback with error handling
     // std::cout << "Calling onDeath callback..." << std::endl;
     try {
-        onDeath();
+    onDeath();
         // std::cout << "onDeath callback completed" << std::endl;
     } catch (const std::exception&) {
         // std::cout << "Error in onDeath callback: " << e.what() << std::endl;
@@ -1264,12 +1264,12 @@ MonsterState Monster::determineNextState() {
     
     // Check if player is in attack range
     if (isInAttackRange() && hasLineOfSight) {
-        return MonsterState::Attacking;
+            return MonsterState::Attacking;
     }
     
     // Check if player is in danger zone (aggressive behavior)
     if (isPlayerInDangerZone() && hasLineOfSight) {
-        return MonsterState::Chasing;
+            return MonsterState::Chasing;
     }
     
     // Check if player is visible (normal detection)
@@ -1278,8 +1278,8 @@ MonsterState Monster::determineNextState() {
         if (state == MonsterState::Patrolling || state == MonsterState::Idle) {
             return MonsterState::Alert;
         }
-        return MonsterState::Chasing;
-    }
+            return MonsterState::Chasing;
+        }
     
     // If we lost sight of player but have a last known position
     if (state == MonsterState::Chasing && !hasLineOfSight && 
@@ -1289,9 +1289,9 @@ MonsterState Monster::determineNextState() {
     
     // If we've been alert for too long without seeing player, go back to patrolling
     if (state == MonsterState::Alert && alertTimer > 5.0f) {
-        return MonsterState::Patrolling;
-    }
-    
+    return MonsterState::Patrolling;
+}
+
     // Default to patrolling
     return MonsterState::Patrolling;
 }

@@ -8,11 +8,10 @@
 #include "../Rendering/Shader.h"
 #include "../Math/Math.h"
 #include "../../GameObjects/Monster.h"
+
 #include <iostream>
 #include <algorithm>
 #include <cmath>
-
-// Define M_PI if not already defined
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -166,7 +165,12 @@ void Projectile::update(float deltaTime) {
     // Debug output to see if projectiles are updating (reduced frequency)
     static int updateCount = 0;
     updateCount++;
-    if (updateCount % 600 == 0) { // Print every 600 frames (about every 10 seconds)
+    if (updateCount % 60 == 0) { // Print every 60 frames (about every second)
+        std::cout << "=== PROJECTILE UPDATE DEBUG ===" << std::endl;
+        std::cout << "Projectile: " << getName() << " is updating!" << std::endl;
+        std::cout << "Position: (" << getPosition().x << ", " << getPosition().y << ", " << getPosition().z << ")" << std::endl;
+        std::cout << "Velocity: (" << velocity.x << ", " << velocity.y << ", " << velocity.z << ")" << std::endl;
+        std::cout << "=================================" << std::endl;
     }
     
     // Update lifetime
@@ -183,6 +187,9 @@ void Projectile::update(float deltaTime) {
     
     // Update physics
     updatePhysics(deltaTime);
+
+    // Rotation is now handled in the custom getModelMatrix() method
+    // This ensures world space orientation that doesn't change with camera movement
     
     // Update trail
     if (config.hasTrail) {
@@ -225,6 +232,58 @@ void Projectile::render(const Renderer& renderer, const Camera& camera) {
     }
 }
 
+Mat4 Projectile::getModelMatrix() const {
+    // Create a custom model matrix that maintains world space orientation
+    // This ensures the bullet always points along its velocity vector regardless of camera movement
+    
+    Mat4 modelMatrix = Mat4(); // Identity matrix
+    
+    // Apply scale first (same as base class)
+    Vec3 scaleVector = getScale();
+    Mat4 scaleMatrix = Engine::scale(scaleVector);
+    modelMatrix = modelMatrix * scaleMatrix;
+    
+    // Calculate world space orientation based on velocity direction
+    // Bullet's default forward direction is +Z, so we need to align +Z with velocity
+    Vec3 velocityDir = Engine::normalize(velocity);
+    
+    // Create orthonormal basis vectors for the bullet's orientation
+    Vec3 forward = velocityDir;  // Bullet points along velocity direction
+    
+    // Choose up vector (prefer world up, but handle edge cases)
+    Vec3 worldUp = Vec3(0.0f, 1.0f, 0.0f);
+    Vec3 right, up;
+    
+    // Handle edge case where velocity is parallel to world up
+    if (abs(forward.dot(worldUp)) > 0.99f) {
+        // Use world forward as reference instead
+        Vec3 worldForward = Vec3(0.0f, 0.0f, 1.0f);
+        right = worldForward.cross(forward).normalize();
+        up = forward.cross(right).normalize();
+    } else {
+        // Standard case: use world up as reference
+        right = worldUp.cross(forward).normalize();
+        up = forward.cross(right).normalize();
+    }
+    
+    // Build rotation matrix from basis vectors
+    // This creates a rotation matrix that aligns the bullet's +Z axis with the velocity direction
+    Mat4 rotationMatrix = Mat4();
+    rotationMatrix.m[0] = right.x;   rotationMatrix.m[1] = right.y;   rotationMatrix.m[2] = right.z;   rotationMatrix.m[3] = 0.0f;
+    rotationMatrix.m[4] = up.x;      rotationMatrix.m[5] = up.y;      rotationMatrix.m[6] = up.z;      rotationMatrix.m[7] = 0.0f;
+    rotationMatrix.m[8] = forward.x; rotationMatrix.m[9] = forward.y; rotationMatrix.m[10] = forward.z; rotationMatrix.m[11] = 0.0f;
+    rotationMatrix.m[12] = 0.0f;     rotationMatrix.m[13] = 0.0f;     rotationMatrix.m[14] = 0.0f;     rotationMatrix.m[15] = 1.0f;
+    
+    // Apply rotation
+    modelMatrix = modelMatrix * rotationMatrix;
+    
+    // Apply translation last (same as base class)
+    Vec3 position = getPosition();
+    modelMatrix = Engine::translate(modelMatrix, position);
+    
+    return modelMatrix;
+}
+
 void Projectile::fire(const Vec3& position, const Vec3& direction, GameObject* owner) {
     // Debug output
     std::cout << "=== PROJECTILE FIRE ===" << std::endl;
@@ -244,45 +303,8 @@ void Projectile::fire(const Vec3& position, const Vec3& direction, GameObject* o
     std::cout << "Velocity: (" << velocity.x << ", " << velocity.y << ", " << velocity.z << ")" << std::endl;
     std::cout << "Normalized direction: (" << normalizedDir.x << ", " << normalizedDir.y << ", " << normalizedDir.z << ")" << std::endl;
     
-    // Calculate rotation to align bullet's +Z axis with velocity direction
-    // The bullet mesh has its pointed tip in the +Z direction by default
-    Vec3 bulletForward = Vec3(0.0f, 0.0f, 1.0f); // Default bullet forward direction (+Z)
-    Vec3 targetDirection = normalizedDir; // Direction we want the bullet to face
-    
-    // Calculate rotation using Euler angles
-    // We need to rotate from bulletForward to targetDirection
-    
-    // Calculate yaw (rotation around Y axis)
-    float yaw = atan2(targetDirection.x, targetDirection.z);
-    
-    // Store previous yaw for angle unwrapping (continuous angle tracking)
-    static float previousYaw = 0.0f;
-    
-    // Angle unwrapping to prevent discontinuity at ±π (0°/180° yaw)
-    // This ensures smooth rotation without jumps when crossing the Z-axis
-    float delta = yaw - previousYaw;
-    if (delta > M_PI) {
-        yaw -= 2.0f * static_cast<float>(M_PI);
-    } else if (delta < -M_PI) {
-        yaw += 2.0f * static_cast<float>(M_PI);
-    }
-    previousYaw = yaw;
-    
-    // Calculate pitch (rotation around X axis)
-    float pitch = -asin(targetDirection.y);
-    
-    // Roll is 0 for bullets (no roll needed)
-    float roll = 0.0f;
-    
-    Vec3 rotation = Vec3(pitch, yaw, roll);
-    setRotation(rotation);
-    
-    std::cout << "=== BULLET ROTATION CALCULATION ===" << std::endl;
-    std::cout << "Bullet forward (default): (" << bulletForward.x << ", " << bulletForward.y << ", " << bulletForward.z << ")" << std::endl;
-    std::cout << "Target direction: (" << targetDirection.x << ", " << targetDirection.y << ", " << targetDirection.z << ")" << std::endl;
-    std::cout << "Calculated rotation (pitch, yaw, roll): (" << pitch << ", " << yaw << ", " << roll << ")" << std::endl;
-    std::cout << "Rotation in degrees: (" << (pitch * 180.0f / M_PI) << ", " << (yaw * 180.0f / M_PI) << ", " << (roll * 180.0f / M_PI) << ")" << std::endl;
-    std::cout << "===================================" << std::endl;
+    // Initial orientation is now handled in the custom getModelMatrix() method
+    // This ensures world space orientation that doesn't change with camera movement
     
     // Set owner
     this->owner = owner;
@@ -838,6 +860,20 @@ public:
 };
 
 void ProjectileManager::update(float deltaTime) {
+    // Debug output to see if ProjectileManager is updating
+    static int managerUpdateCount = 0;
+    managerUpdateCount++;
+    if (managerUpdateCount % 180 == 0) { // Print every 3 seconds
+        std::cout << "=== PROJECTILE MANAGER UPDATE ===" << std::endl;
+        std::cout << "Active projectiles: " << activeProjectiles.size() << std::endl;
+        for (size_t i = 0; i < activeProjectiles.size(); ++i) {
+            auto& projectile = activeProjectiles[i];
+            std::cout << "  Projectile " << i << ": " << projectile->getName() 
+                      << " Active: " << (projectile->isActive() ? "YES" : "NO") << std::endl;
+        }
+        std::cout << "=================================" << std::endl;
+    }
+    
     // Update all active projectiles
     for (auto it = activeProjectiles.begin(); it != activeProjectiles.end();) {
         Projectile* projectile = it->get();
@@ -933,10 +969,10 @@ Projectile* ProjectileManager::createMonsterHunterProjectile(const std::string& 
     
     ProjectileConfig config;
     config.type = ProjectileType::Bullet;
-    config.speed = 80.0f;  // Slower for better visibility
+    config.speed = 15.0f;  // Much slower for easier observation
     config.maxDistance = 150.0f;
     config.lifetime = 3.0f;  // Longer lifetime to see them
-    config.size = 1.0f;  // Larger size for better visibility
+    config.size = 0.2f;  // Slightly larger bullet for clearer observation
     config.damage = 35.0f;  // Good damage against monsters
     config.color = Vec3(1.0f, 0.0f, 0.0f);  // Bright red for maximum visibility
     config.hasTrail = true;

@@ -24,14 +24,21 @@
 #include "../../GameObjects/Monster.h"
 #include "../Input/Input.h"
 #include <GL/glew.h>
+#include <glfw3.h>
 #include <iostream>
+
+// Define M_PI if not already defined
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 namespace Engine {
 
 Game::Game(int width, int height, const char* title)
     : window(nullptr), windowWidth(width), windowHeight(height), windowTitle(title),
       isRunning(false), isInitialized(false), deltaTime(0.0f), lastFrame(0.0f),
-      isFullscreen(false), windowed_width(width), windowed_height(height) {}
+      isFullscreen(false), windowed_width(width), windowed_height(height),
+      crosshair(nullptr) {}
 
 Game::~Game() {
     cleanup();
@@ -138,8 +145,8 @@ void Game::setupSystems() {
     input.setFullscreenToggleCallback([this]() { this->toggleFullscreen(); });
     
     // Set up window callbacks
-    glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
-    glfwSetWindowIconifyCallback(window, windowIconifyCallback);
+    glfwSetFramebufferSizeCallback(window, Game::framebufferSizeCallback);
+    glfwSetWindowIconifyCallback(window, Game::windowIconifyCallback);
 }
 
 void Game::run() {
@@ -452,6 +459,20 @@ void Game::render() {
         } else {
             // Fallback to default renderer
             weapon->render(*defaultRenderer, *camera);
+        }
+    }
+    
+    // DEBUG: Render projectile start position marker
+    if (weapon) {
+        renderProjectileStartPositionDebug(*defaultRenderer, *camera);
+    } else {
+        // Debug: Check if weapon is available
+        static int weaponDebugCounter = 0;
+        weaponDebugCounter++;
+        if (weaponDebugCounter % 300 == 0) { // Every 5 seconds
+            std::cout << "=== WEAPON DEBUG ===" << std::endl;
+            std::cout << "Weapon is NULL - debug sphere not rendered!" << std::endl;
+            std::cout << "===================" << std::endl;
         }
     }
     
@@ -862,6 +883,164 @@ void Game::windowIconifyCallback(GLFWwindow* window, int iconified) {
             game->onWindowResize(width, height);
         }
     }
+}
+
+void Game::renderProjectileStartPositionDebug(const Renderer& renderer, const Camera& camera) {
+    if (!weapon) {
+        std::cout << "DEBUG: Weapon is NULL in renderProjectileStartPositionDebug!" << std::endl;
+        return;
+    }
+    
+    // SCREEN-SPACE APPROACH: Render a fixed point on screen
+    // This simulates where the projectile would start from the player's perspective
+    
+    // Get the projectile start position from the weapon (for debug output)
+    Vec3 startPos = weapon->getBarrelTipPosition();
+    
+    // Debug: Always print when this method is called
+    static int methodCallCounter = 0;
+    methodCallCounter++;
+    if (methodCallCounter % 60 == 0) { // Every 1 second
+        std::cout << "=== SCREEN-SPACE DEBUG MARKER ===" << std::endl;
+        std::cout << "Method called " << methodCallCounter << " times" << std::endl;
+        std::cout << "Weapon world position: (" << startPos.x << ", " << startPos.y << ", " << startPos.z << ")" << std::endl;
+        std::cout << "Camera position: (" << camera.getPosition().x << ", " << camera.getPosition().y << ", " << camera.getPosition().z << ")" << std::endl;
+        std::cout << "=================================" << std::endl;
+    }
+    
+    // Create a simple debug quad for screen-space rendering
+    static std::unique_ptr<Mesh> debugQuad = nullptr;
+    if (!debugQuad) {
+        debugQuad = std::make_unique<Mesh>();
+        
+        // Create a simple quad (2 triangles) for screen-space rendering
+        std::vector<float> vertices = {
+            // Position (x, y, z) - small quad in front of camera
+            -0.05f, -0.05f, 0.0f,  // Bottom-left
+             0.05f, -0.05f, 0.0f,  // Bottom-right
+             0.05f,  0.05f, 0.0f,  // Top-right
+            -0.05f,  0.05f, 0.0f   // Top-left
+        };
+        
+        std::vector<unsigned int> indices = {
+            0, 1, 2,  // First triangle
+            2, 3, 0   // Second triangle
+        };
+        
+        debugQuad->createMesh(vertices, indices);
+        
+        std::cout << "=== DEBUG QUAD CREATED ===" << std::endl;
+        std::cout << "Quad mesh valid: " << (debugQuad->isValid() ? "SUCCESS" : "FAILED") << std::endl;
+        std::cout << "=========================" << std::endl;
+    }
+    
+    // Create model matrix for screen-space positioning with camera-facing basis
+    Mat4 modelMatrix = Mat4();
+    
+    // Build an orthonormal basis from the camera so the quad doesn't rotate relative to the screen
+    Vec3 cameraPos = camera.getPosition();
+    Vec3 cameraForward = camera.getForward().normalize();
+    Vec3 cameraRight = camera.getRight().normalize();
+    Vec3 cameraUp = camera.getUpVector().normalize();
+    
+    // Scale the quad to a small size in world units
+    const float quadScale = 0.1f;
+    
+    // Set rotation/scale rows (right, up, forward) — billboard locked to camera orientation
+    modelMatrix.m[0]  = cameraRight.x * quadScale;  modelMatrix.m[1]  = cameraRight.y * quadScale;  modelMatrix.m[2]  = cameraRight.z * quadScale;  modelMatrix.m[3]  = 0.0f;
+    modelMatrix.m[4]  = cameraUp.x    * quadScale;  modelMatrix.m[5]  = cameraUp.y    * quadScale;  modelMatrix.m[6]  = cameraUp.z    * quadScale;  modelMatrix.m[7]  = 0.0f;
+    modelMatrix.m[8]  = cameraForward.x;            modelMatrix.m[9]  = cameraForward.y;            modelMatrix.m[10] = cameraForward.z;            modelMatrix.m[11] = 0.0f;
+    
+    // Position the quad at a fixed offset from camera (like a muzzle point in view space)
+    Vec3 screenOffset = Vec3(0.2f, -0.1f, 0.8f); // Right, down, forward from camera
+    Vec3 quadWorldPos = cameraPos + 
+                       cameraRight * screenOffset.x +
+                       cameraUp    * screenOffset.y +
+                       cameraForward * screenOffset.z;
+    
+    modelMatrix.m[12] = quadWorldPos.x;
+    modelMatrix.m[13] = quadWorldPos.y;
+    modelMatrix.m[14] = quadWorldPos.z;
+    modelMatrix.m[15] = 1.0f;
+    
+    // Render the debug quad in bright red
+    Vec3 debugColor(1.0f, 0.0f, 0.0f); // Bright red
+    
+    // Debug: Print rendering info
+    static int renderCounter = 0;
+    renderCounter++;
+    if (renderCounter % 60 == 0) { // Every 1 second
+        std::cout << "=== RENDERING SCREEN-SPACE QUAD ===" << std::endl;
+        std::cout << "Render call #" << renderCounter << std::endl;
+        std::cout << "Quad world position: (" << quadWorldPos.x << ", " << quadWorldPos.y << ", " << quadWorldPos.z << ")" << std::endl;
+        std::cout << "Screen offset: (" << screenOffset.x << ", " << screenOffset.y << ", " << screenOffset.z << ")" << std::endl;
+        std::cout << "===================================" << std::endl;
+    }
+    
+    renderer.renderMesh(*debugQuad, modelMatrix, camera, debugColor);
+    
+    // SECOND MARKER: End position (center of screen / crosshair position)
+    // This represents where the player is aiming - the end of the projectile vector
+    
+    // Create a second debug quad for the end position
+    static std::unique_ptr<Mesh> debugEndQuad = nullptr;
+    if (!debugEndQuad) {
+        debugEndQuad = std::make_unique<Mesh>();
+        
+        // Create a simple quad for the end position marker
+        std::vector<float> endVertices = {
+            // Position (x, y, z) - small quad at center of screen
+            -0.03f, -0.03f, 0.0f,  // Bottom-left
+             0.03f, -0.03f, 0.0f,  // Bottom-right
+             0.03f,  0.03f, 0.0f,  // Top-right
+            -0.03f,  0.03f, 0.0f   // Top-left
+        };
+        
+        std::vector<unsigned int> endIndices = {
+            0, 1, 2,  // First triangle
+            2, 3, 0   // Second triangle
+        };
+        
+        debugEndQuad->createMesh(endVertices, endIndices);
+        
+        std::cout << "=== DEBUG END QUAD CREATED ===" << std::endl;
+        std::cout << "End quad mesh valid: " << (debugEndQuad->isValid() ? "SUCCESS" : "FAILED") << std::endl;
+        std::cout << "=============================" << std::endl;
+    }
+    
+    // Create model matrix for the end position (center of screen)
+    Mat4 endModelMatrix = Mat4();
+    
+    // Position the end quad at the center of the screen (where crosshair is)
+    // This is a fixed distance in front of the camera, centered
+    Vec3 endScreenOffset = Vec3(0.0f, 0.0f, 1.0f); // Center, center, forward from camera
+    Vec3 endWorldPos = cameraPos + 
+                      cameraRight * endScreenOffset.x +
+                      cameraUp    * endScreenOffset.y +
+                      cameraForward * endScreenOffset.z;
+    
+    // Set rotation/scale rows (right, up, forward) — billboard locked to camera orientation
+    const float endQuadScale = 0.08f; // Slightly smaller than start quad
+    endModelMatrix.m[0]  = cameraRight.x * endQuadScale;  endModelMatrix.m[1]  = cameraRight.y * endQuadScale;  endModelMatrix.m[2]  = cameraRight.z * endQuadScale;  endModelMatrix.m[3]  = 0.0f;
+    endModelMatrix.m[4]  = cameraUp.x    * endQuadScale;  endModelMatrix.m[5]  = cameraUp.y    * endQuadScale;  endModelMatrix.m[6]  = cameraUp.z    * endQuadScale;  endModelMatrix.m[7]  = 0.0f;
+    endModelMatrix.m[8]  = cameraForward.x;               endModelMatrix.m[9]  = cameraForward.y;               endModelMatrix.m[10] = cameraForward.z;               endModelMatrix.m[11] = 0.0f;
+    
+    // Set position in model matrix
+    endModelMatrix.m[12] = endWorldPos.x;
+    endModelMatrix.m[13] = endWorldPos.y;
+    endModelMatrix.m[14] = endWorldPos.z;
+    endModelMatrix.m[15] = 1.0f;
+    
+    // Render the debug end quad in bright green
+    Vec3 endDebugColor(0.0f, 1.0f, 0.0f); // Bright green
+    
+    // Debug: Print rendering info for end position
+    if (renderCounter % 60 == 0) { // Every 1 second
+        std::cout << "End quad world position: (" << endWorldPos.x << ", " << endWorldPos.y << ", " << endWorldPos.z << ")" << std::endl;
+        std::cout << "End screen offset: (" << endScreenOffset.x << ", " << endScreenOffset.y << ", " << endScreenOffset.z << ")" << std::endl;
+    }
+    
+    renderer.renderMesh(*debugEndQuad, endModelMatrix, camera, endDebugColor);
 }
 
 } // namespace Engine
